@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     # local
     'core',
     'accounts',
+    'meals',
 ]
 
 MIDDLEWARE = [
@@ -168,3 +169,6 @@ SIMPLE_JWT = {
     'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
+# --- QR-сессии (ТЗ 4.1) ---
+QR_TOKEN_TTL_SECONDS = 180          # 3 минуты
+QR_ASSIGNMENT_TIMEOUT_SECONDS = 600  # 10 минут на подтверждение (ТЗ 4.4)
