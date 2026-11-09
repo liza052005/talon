@@ -140,6 +140,10 @@ class QRSession(models.Model):
                                 on_delete=models.SET_NULL,
                                 related_name='used_qr_sessions',
                                 verbose_name='использован студентом')
+    reserved_by = models.ForeignKey(
+    'StudentProfile', null=True, blank=True, on_delete=models.SET_NULL,
+    related_name='reserved_qr_sessions', verbose_name='зарезервирован студентом',
+)
 
     class Meta:
         verbose_name = 'QR-сессия'
