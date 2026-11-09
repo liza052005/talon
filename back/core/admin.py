@@ -8,12 +8,33 @@ from .models import (
 
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
-    fieldsets = UserAdmin.fieldsets + (
+    # --- Форма РЕДАКТИРОВАНИЯ существующего пользователя ---
+    fieldsets = (
+        (None, {'fields': ('email', 'username', 'password')}),
+        ('Личные данные', {'fields': ('first_name', 'last_name')}),
+        ('Права', {
+            'fields': ('is_active', 'is_staff', 'is_superuser', 'groups', 'user_permissions'),
+        }),
+        ('Важные даты', {'fields': ('last_login', 'date_joined')}),
         ('Роль и 2FA', {'fields': ('role', 'totp_secret', 'totp_confirmed')}),
     )
+
+    # --- Форма ДОБАВЛЕНИЯ нового пользователя ---
+    add_fieldsets = (
+        (None, {
+            'classes': ('wide',),
+            'fields': ('email', 'username', 'password1', 'password2'),
+        }),
+        ('Роль и 2FA', {
+            'classes': ('wide',),
+            'fields': ('role', 'totp_secret', 'totp_confirmed'),
+        }),
+    )
+
     list_display = ('email', 'username', 'role', 'is_active')
     list_filter = ('role', 'is_active')
     search_fields = ('email', 'username')
+    ordering = ('email',)
 
 
 @admin.register(Group)

@@ -177,3 +177,98 @@ class Verify2FASerializer(serializers.Serializer):
         vc.used = True
         vc.save(update_fields=['used'])
         return validated_data['_user']
+
+from .totp import generate_secret, provisioning_uri, verify_code
+
+
+class StaffLoginSerializer(serializers.Serializer):
+    """Шаг 1: логин+пароль сотрудника."""
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        from django.contrib.auth import authenticate
+
+        email = attrs['email'].lower()
+        user = authenticate(
+            request=self.context.get('request'),
+            username=email,
+            password=attrs['password'],
+        )
+        if user is None:
+            raise serializers.ValidationError('Неверный email или пароль.')
+        if not user.is_active:
+            raise serializers.ValidationError('Аккаунт заблокирован.')
+        if user.role == User.Role.STUDENT:
+            raise serializers.ValidationError('Неверный email или пароль.')
+        if not user.totp_confirmed:
+            # Первый вход — генерируем секрет, ещё не сохраняем (сохраним при подтверждении)
+            pass
+
+        attrs['_user'] = user
+        return attrs
+
+    def create(self, validated_data):
+        user = validated_data['_user']
+
+        if not user.totp_confirmed:
+            # Первый вход: генерируем секрет
+            secret = user.totp_secret or generate_secret()
+            user.totp_secret = secret
+            user.save(update_fields=['totp_secret'])
+            return user, 'setup'
+
+        return user, 'verify'
+
+
+class StaffTOTPSetupSerializer(serializers.Serializer):
+    """Подтверждение привязки TOTP первым кодом."""
+    email = serializers.EmailField()
+    code = serializers.CharField(min_length=6, max_length=6)
+
+    def validate(self, attrs):
+        email = attrs['email'].lower()
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise serializers.ValidationError('Неверный код.')
+        if user.role == User.Role.STUDENT:
+            raise serializers.ValidationError('Неверный код.')
+        if user.totp_confirmed:
+            raise serializers.ValidationError('TOTP уже подтверждён.')
+        if not user.totp_secret:
+            raise serializers.ValidationError('Сначала пройдите вход.')
+        if not verify_code(user.totp_secret, attrs['code']):
+            raise serializers.ValidationError('Неверный код.')
+
+        attrs['_user'] = user
+        return attrs
+
+    def create(self, validated_data):
+        user = validated_data['_user']
+        user.totp_confirmed = True
+        user.save(update_fields=['totp_confirmed'])
+        return user
+
+
+class StaffTOTPVerifySerializer(serializers.Serializer):
+    """Обычный вход сотрудника: email + TOTP-код → JWT."""
+    email = serializers.EmailField()
+    code = serializers.CharField(min_length=6, max_length=6)
+
+    def validate(self, attrs):
+        email = attrs['email'].lower()
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            raise serializers.ValidationError('Неверный код.')
+        if user.role == User.Role.STUDENT or not user.totp_confirmed:
+            raise serializers.ValidationError('Неверный код.')
+        if not verify_code(user.totp_secret, attrs['code']):
+            raise serializers.ValidationError('Неверный код.')
+
+        attrs['_user'] = user
+        return attrs
+
+    def create(self, validated_data):
+        return validated_data['_user']
