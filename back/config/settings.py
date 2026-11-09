@@ -161,3 +161,10 @@ DEFAULT_FROM_EMAIL = 'noreply@meal-system.local'
 # --- Часовой пояс (поставь свой) ---
 TIME_ZONE = 'Europe/Moscow'
 USE_TZ = True
+from datetime import timedelta
+
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
