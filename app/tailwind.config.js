@@ -5,6 +5,9 @@ module.exports = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['"Inter Tight"', 'system-ui', '-apple-system', 'sans-serif'],
+      },
       colors: {
         // Основные цвета по ТЗ
         primary:   '#FAFAFA',  // белый (Primary) — основной фон

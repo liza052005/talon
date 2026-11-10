@@ -1,12 +1,33 @@
+@font-face {
+  font-family: 'Inter Tight';
+  src: url('./assets/fonts/InterTight-Regular.ttf') format('TrueType');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Inter Tight';
+  src: url('./assets/fonts/InterTight-Medium.ttf') format('TrueType');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Inter Tight';
+  src: url('./assets/fonts/InterTight-SemiBold.ttf') format('TrueType');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Сброс стилей под мобилки (ТЗ: Mobile-first) */
+/* Базовые стили */
 body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  background-color: #f3f4f6; /* light gray */
+  @apply bg-secondary text-black antialiased;
+  font-family: 'Inter Tight', system-ui, -apple-system, sans-serif;
 }
