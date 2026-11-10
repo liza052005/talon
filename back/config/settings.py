@@ -137,9 +137,12 @@ MAILERS = {
 DEFAULT_FROM_EMAIL = "noreply@meal-system.local"
 # --- CORS (React на другом порту) ---
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
+    "http://localhost:5173",   # Vite (на будущее)
     "http://127.0.0.1:5173",
+    "http://localhost:3000",   # <--- ДОБАВИТЬ ЭТО (для React CRA)
+    "http://127.0.0.1:3000",   # <--- И ЭТО
 ]
+CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_CREDENTIALS = True
 
 # --- DRF ---

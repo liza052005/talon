@@ -1,27 +1,55 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import api from '../api/client'; // Убедись, что путь до client.js верный
 
 const Auth = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Состояния для логики запроса
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  // Кнопка активна только когда заполнены оба поля
-  const isFormValid = email.trim() !== '' && password.trim() !== '';
+  // Кнопка активна только когда заполнены оба поля и нет загрузки
+  const isFormValid = email.trim() !== '' && password.trim() !== '' && !loading;
 
-  const handleGetCode = (e) => {
+  const handleGetCode = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
-    // TODO: запрос к backend за кодом подтверждения
-    navigate('/code');
+
+    setError('');
+    setLoading(true);
+
+    try {
+      // Стучимся в наш Django (эндпоинт login)
+      await api.post('/auth/login/', { email, password });
+      
+      // Переходим на экран ввода 2FA кода, передаем email И пароль
+      // Пароль нужен для функции "Запросить код повторно" на следующем экране
+      navigate('/code', { state: { email, password } });
+    } catch (err) {
+      // Обработка ошибок из Django (400, 429, 500)
+      if (err.response?.data?.non_field_errors) {
+        setError(err.response.data.non_field_errors[0]);
+      } else if (err.response?.data?.detail) {
+        setError(err.response.data.detail); // Сюда падают 429 (слишком много попыток)
+      } else if (err.response?.data?.email) {
+         setError(err.response.data.email[0]); // Ошибки валидации поля
+      } else {
+        setError('Ошибка сервера. Попробуйте позже.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="min-h-screen w-full bg-secondary flex flex-col px-5">
       <div className="mx-auto flex w-full max-w-[480px] flex-1 flex-col">
 
-        {/* Градиент */}
+        {/* Декоративный градиентный блик */}
         <div
           aria-hidden
           className="pointer-events-none mx-auto mt-[88px] h-[170px] w-[260px] rotate-[-20deg]"
@@ -31,15 +59,20 @@ const Auth = () => {
           }}
         />
 
-        {/* Заголовок */}
         <h1 className="mt-12 text-4xl leading-[105%] font-semibold text-black laptop:text-[64px] desktop:text-[32px]">
           Вход
         </h1>
 
-        {/* Подзаголовок */}
         <p className="mt-2 text-sm leading-[120%] text-gray laptop:text-xl laptop:font-normal desktop:text-sm desktop:font-medium">
           Введите данные аккаунта, чтобы получить код для входа
         </p>
+
+        {/* Плашка с ошибкой (появляется, если есть error) */}
+        {error && (
+          <div className="mt-6 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleGetCode} noValidate className="mt-8">
           {/* Email */}
@@ -48,8 +81,9 @@ const Auth = () => {
             placeholder="email.vsk@gmail.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            disabled={loading}
             className="h-12 w-full bg-transparent text-base text-black placeholder-gray
-                       focus:outline-none laptop:text-xl desktop:text-sm"
+                       focus:outline-none laptop:text-xl desktop:text-sm disabled:opacity-50"
           />
 
           {/* Пароль + переключатель видимости */}
@@ -59,8 +93,9 @@ const Auth = () => {
               placeholder="Пароль"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              disabled={loading}
               className="h-12 w-full bg-transparent pr-12 text-base text-black placeholder-gray
-                         focus:outline-none laptop:text-xl desktop:text-sm"
+                         focus:outline-none laptop:text-xl desktop:text-sm disabled:opacity-50"
             />
             <button
               type="button"
@@ -83,7 +118,6 @@ const Auth = () => {
             </button>
           </div>
 
-          {/* Забыли пароль? */}
           <div className="mt-6 flex justify-end">
             <button
               type="button"
@@ -94,7 +128,6 @@ const Auth = () => {
             </button>
           </div>
 
-          {/* Кнопка получения кода */}
           <button
             type="submit"
             disabled={!isFormValid}
@@ -103,11 +136,10 @@ const Auth = () => {
                 ? 'bg-accent text-black'
                 : 'cursor-not-allowed bg-gray/50 text-primary'}`}
           >
-            Получить код
+            {loading ? 'Отправка...' : 'Получить код'}
           </button>
         </form>
 
-        {/* Условия */}
         <p className="mt-8 text-center text-sm leading-[120%] text-gray">
           Продолжая, я принимаю условия
           <br />
@@ -120,7 +152,6 @@ const Auth = () => {
           </button>
         </p>
 
-        {/* Футер с переходом на регистрацию */}
         <p className="mt-auto pb-10 pt-16 text-center text-sm leading-[120%] text-gray">
           Нет аккаунта?{' '}
           <button
