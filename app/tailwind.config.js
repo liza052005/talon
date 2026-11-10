@@ -6,12 +6,18 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Базовая палитра по ТЗ (можешь поменять)
-        primary: '#2563eb', // синий
-        secondary: '#f59e0b', // оранжевый
-        danger: '#ef4444', // красный
-        success: '#10b981', // зеленый
-      }
+        // Основные цвета по ТЗ
+        primary:   '#FAFAFA',  // белый (Primary) — основной фон
+        secondary: '#F2F2F7',  // белый (Secondary) — вторичные поверхности
+        black:     '#0D0C0C',  // черный — основной текст
+        gray:      '#979797',  // серый — вторичный текст, placeholder, разделители
+        accent:    '#88FF00',  // зеленый (Accent) — CTA, активные состояния
+
+        // Стопы радиального градиента (для использования через arbitrary values)
+        flame:  '#FF6600',  // step 0%
+        sun:    '#FFCC00',  // step 36%
+        berry:  '#FF0055',  // step 75%
+      },
     },
   },
   plugins: [],
