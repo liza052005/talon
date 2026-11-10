@@ -21,7 +21,7 @@ const Auth = () => {
     <div className="min-h-screen w-full bg-secondary flex flex-col px-5">
       <div className="mx-auto flex w-full max-w-[480px] flex-1 flex-col">
 
-        {/* Декоративный градиентный блик (эллипс с кольцами, как в референсе) */}
+        {/* Градиент */}
         <div
           aria-hidden
           className="pointer-events-none mx-auto mt-[88px] h-[170px] w-[260px] rotate-[-20deg]"
