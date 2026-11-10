@@ -1,8 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import Auth from './Pages/Auth';
-import Register from './pages/Register';
-import CodeInput from './pages/CodeInput';
-import ForgotPassword from './pages/ForgotPassword';
+import Register from './Pages/Register';
+import CodeInput from './Pages/CodeInput';
+import ForgotPassword from './Pages/ForgotPassword';
 import Privacy from './Pages/Privacy';
 
 function App() {
@@ -10,7 +10,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Auth />} />
-        <Route path="/register" element={<Register />} />
+        <Route path="/register" element={<Register/>} />
         <Route path="/code" element={<CodeInput />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/privacy" element={<Privacy />} />
