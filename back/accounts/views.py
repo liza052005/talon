@@ -208,3 +208,36 @@ class MeView(APIView):
     def get(self, request):
         u = request.user
         return Response({'id': u.id, 'email': u.email, 'role': u.role})
+
+from core.models import User
+
+class StaffListCreateView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # Разрешаем и админу, и модератору смотреть список
+        if request.user.role not in [User.Role.ADMIN, User.Role.MODERATOR]:
+            return Response({'detail': 'Доступ запрещён'}, status=status.HTTP_403_FORBIDDEN)
+        
+        staff = User.objects.exclude(role=User.Role.STUDENT).values('id', 'email', 'first_name', 'last_name', 'role')
+        return Response(staff)
+
+    def post(self, request):
+        # А вот создавать новых сотрудников может ТОЛЬКО админ
+        if request.user.role != User.Role.ADMIN:
+            return Response({'detail': 'Только администратор может создавать сотрудников'}, status=status.HTTP_403_FORBIDDEN)
+        
+        data = request.data
+        if User.objects.filter(email=data['email']).exists():
+            return Response({'detail': 'Этот email уже занят'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # Создаем сотрудника (пароль по умолчанию qwerty123)
+        user = User.objects.create_user(
+            username=data['email'],
+            email=data['email'],
+            password=data.get('password', 'qwerty123'),
+            first_name=data.get('firstName', ''),
+            last_name=data.get('lastName', ''),
+            role=data['role']
+        )
+        return Response({'id': user.id, 'email': user.email}, status=status.HTTP_201_CREATED)

@@ -23,16 +23,22 @@ def client_ip(request) -> str:
 
 
 def check_ip_rate_limit(request):
-    """Не более 5 попыток за 10 минут с одного IP. Иначе — 429."""
+    """Не более 5 НЕУДАЧНЫХ попыток за 10 минут с одного IP. Иначе — 429."""
     ip = client_ip(request)
     since = timezone.now() - timedelta(minutes=IP_WINDOW_MINUTES)
-    attempts = LoginAttempt.objects.filter(ip_address=ip, attempted_at__gte=since).count()
+    
+    # Считаем только НЕУДАЧНЫЕ попытки (success=False), чтобы не блочить своих!
+    attempts = LoginAttempt.objects.filter(
+        ip_address=ip, 
+        attempted_at__gte=since,
+        success=False  # <--- ВОТ ЭТА СТРОКА
+    ).count()
+    
     if attempts >= IP_MAX_ATTEMPTS:
         raise Throttled(
             detail='Слишком много попыток. Попробуйте позже.',
             wait=int(IP_BLOCK_MINUTES * 60),
         )
-
 
 def account_is_blocked(email: str) -> bool:
     """10 неудач за час → блок на 30 минут после последней неудачи."""

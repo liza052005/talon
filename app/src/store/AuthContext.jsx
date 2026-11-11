@@ -5,46 +5,43 @@ export const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true); // <--- ВАЖНО
 
-  // При перезагрузке страницы проверяем: не залогинен ли уже юзер?
   useEffect(() => {
     const checkAuth = async () => {
       const token = localStorage.getItem('access_token');
       if (token) {
         try {
           const res = await api.get('/auth/me/');
-          setUser(res.data); // Сохраняем данные юзера (email, role)
+          setUser(res.data);
         } catch (err) {
-          console.error('Ошибка авторизации', err);
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
         }
       }
-      setLoading(false); // Загрузка завершена
+      setLoading(false); // <--- ВАЖНО: загрузка завершена
     };
     checkAuth();
   }, []);
 
-  // Функция вызывается после успешного ввода 2FA кода
   const login = (data) => {
     localStorage.setItem('access_token', data.access);
     localStorage.setItem('refresh_token', data.refresh);
-    setUser(data.user); // data.user приходит с бэкенда
+    setUser(data.user);
   };
 
-  // Функция выхода
   const logout = () => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     setUser(null);
   };
 
-  // Пока проверяем токен — показываем "Загрузку", чтобы не мигали экраны
   if (loading) {
-    return <div className="flex h-screen items-center justify-center">Загрузка...</div>;
+    return <div className="min-h-screen flex items-center justify-center bg-secondary">Загрузка...</div>; // <--- Ждем, пока грузится
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, login, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

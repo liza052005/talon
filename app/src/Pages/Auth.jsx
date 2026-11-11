@@ -152,14 +152,24 @@ const Auth = () => {
           </button>
         </p>
 
-        <p className="mt-auto pb-10 pt-16 text-center text-sm leading-[120%] text-gray">
-          Нет аккаунта?{' '}
+               <p className="mt-auto pb-10 pt-16 text-center text-sm leading-[120%] text-gray flex flex-col items-center gap-2">
+          <span>
+            Нет аккаунта?{' '}
+            <button
+              type="button"
+              className="text-black font-medium hover:underline"
+              onClick={() => navigate('/register')}
+            >
+              Зарегистрироваться
+            </button>
+          </span>
+          {/* Кнопка для быстрого входа сотрудников/админов */}
           <button
             type="button"
-            className="text-black"
-            onClick={() => navigate('/register')}
+            onClick={() => navigate('/staff')}
+            className="text-xs text-gray hover:text-black mt-4 underline decoration-dotted"
           >
-            Зарегистрироваться
+            Вход для сотрудников столовой
           </button>
         </p>
       </div>
