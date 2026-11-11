@@ -69,7 +69,7 @@ const CodeInput = () => {
   const handleConfirm = async (e) => {
     e.preventDefault();
     if (!isCodeComplete || loading) return;
-
+    navigate('/check');
     setError('');
     setLoading(true);
     const finalCode = code.join('');

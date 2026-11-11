@@ -31,3 +31,21 @@ body {
   @apply bg-secondary text-black antialiased;
   font-family: 'Inter Tight', system-ui, -apple-system, sans-serif;
 }
+
+/* Лоадер страницы "Проверка аккаунта":
+   символы поочерёдно поднимаются и подсвечиваются чёрным, бесконечно */
+@keyframes loader-wave {
+  0%, 30%, 100% {
+    transform: translateY(0);
+    color: #979797;
+  }
+  15% {
+    transform: translateY(-12px);
+    color: #0d0c0c;
+  }
+}
+
+.loader-item {
+  color: #979797;
+  animation: loader-wave 1.6s ease-in-out infinite;
+}
