@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { RegisterContext } from '../store/RegisterContext';
 
 const RegisterStep2 = () => {
   const navigate = useNavigate();
+  const { updateData } = useContext(RegisterContext);
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -12,10 +15,11 @@ const RegisterStep2 = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!isFormValid) return;
-    // TODO: сохранить данные шага (state store / backend)
+
+    // Сохраняем данные второго шага
+    updateData({ email, password });
     navigate('/register/step-3');
   };
-
   return (
     <div className="min-h-screen w-full bg-secondary flex flex-col px-5">
       <div className="mx-auto flex w-full max-w-[480px] flex-1 flex-col">

@@ -1,7 +1,6 @@
-import React, { useEffect, useRef, useState, useContext } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import api from '../api/client'; // Проверь путь!
-import { AuthContext } from '../store/AuthContext'; // Проверь путь!
+import api from '../api/client'; 
 
 const CODE_LENGTH = 6;
 const RESEND_SECONDS = 59;
@@ -9,34 +8,26 @@ const RESEND_SECONDS = 59;
 const CodeInput = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login } = useContext(AuthContext);
 
-  // Получаем email и пароль (если передали) со страницы логина
   const email = location.state?.email;
   const password = location.state?.password; 
 
-  // Код: 6 отдельных символов
   const [code, setCode] = useState(Array(CODE_LENGTH).fill(''));
   const inputsRef = useRef([]);
 
-  // Таймер повторной отправки
   const [secondsLeft, setSecondsLeft] = useState(RESEND_SECONDS);
-  
-  // Логика
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const isCodeComplete = code.every((digit) => digit !== '');
   const canResend = secondsLeft <= 0;
 
-  // Если нет email — значит зашли напрямую, выкидываем на логин
   useEffect(() => {
     if (!email) {
       navigate('/');
     }
   }, [email, navigate]);
 
-  // Обратный отсчёт
   useEffect(() => {
     const timer = setInterval(() => {
       setSecondsLeft((s) => (s > 0 ? s - 1 : 0));
@@ -47,7 +38,6 @@ const CodeInput = () => {
   const mm = String(Math.floor(secondsLeft / 60)).padStart(2, '0');
   const ss = String(secondsLeft % 60).padStart(2, '0');
 
-  // Ввод цифры + автопереход на следующий сегмент
   const handleChange = (index, value) => {
     const digit = value.replace(/\D/g, '').slice(-1);
     const next = [...code];
@@ -58,94 +48,77 @@ const CodeInput = () => {
     }
   };
 
-  // Backspace на пустом сегменте — возврат назад
   const handleKeyDown = (index, e) => {
     if (e.key === 'Backspace' && !code[index] && index > 0) {
       inputsRef.current[index - 1]?.focus();
     }
   };
 
-  // Подтверждение кода
   const handleConfirm = async (e) => {
     e.preventDefault();
     if (!isCodeComplete || loading) return;
-    navigate('/check');
+
     setError('');
     setLoading(true);
     const finalCode = code.join('');
 
     try {
-      // Отправляем email и собранный код на бэкенд
-      const res = await api.post('/auth/verify-2fa/', { 
-        email, 
-        code: finalCode 
-      });
+      const res = await api.post('/auth/verify-2fa/', { email, code: finalCode });
       
-      // Если успех — сохраняем JWT токены в контекст
-      login(res.data);
+      // СОХРАНЯЕМ ТОКЕНЫ НАПРЯМУЮ, НЕ ВЫЗЫВАЯ LOGIN ИЗ КОНТЕКСТА
+      localStorage.setItem('access_token', res.data.access);
+      localStorage.setItem('refresh_token', res.data.refresh);
+
+      // Переходим на экран проверки, передаем данные юзера
+      navigate('/check', { state: { firstName: 'Студент', userData: res.data.user } });
       
-      // Переходим на главный экран (пока это '/')
-      navigate('/');
     } catch (err) {
-      if (err.response?.data?.non_field_errors) {
+      if (err.response?.data?.detail) {
+        setError(err.response.data.detail);
+      } else if (err.response?.data?.non_field_errors) {
         setError(err.response.data.non_field_errors[0]);
       } else {
         setError('Неверный или истёкший код.');
       }
-      // Очищаем поле при ошибке
       setCode(Array(CODE_LENGTH).fill(''));
       inputsRef.current[0]?.focus();
-    } finally {
-      setLoading(false);
     }
   };
 
-  // Повторная отправка кода
-  const handleResend = async () => {
+ const handleResend = async () => {
     if (!canResend || !password || loading) return;
     
     setError('');
     setLoading(true);
     try {
-      // Дергаем тот же эндпоинт логина, чтобы бэкенд сгенерировал новый код
       await api.post('/auth/login/', { email, password });
       setSecondsLeft(RESEND_SECONDS);
       setCode(Array(CODE_LENGTH).fill(''));
       inputsRef.current[0]?.focus();
     } catch (err) {
-      setError('Не удалось отправить код. Попробуйте позже.');
+      // Достаем настоящую ошибку из ответа Django
+      if (err.response?.data?.detail) {
+        setError(err.response.data.detail);
+      } else if (err.response?.data?.non_field_errors) {
+        setError(err.response.data.non_field_errors[0]);
+      } else {
+        setError('Не удалось отправить код. Попробуйте позже.');
+      }
     } finally {
       setLoading(false);
     }
   };
-
   return (
     <div className="min-h-screen w-full bg-secondary flex flex-col px-5">
       <div className="mx-auto flex w-full max-w-[480px] flex-1 flex-col">
-
-        {/* Кнопка назад */}
-        <button
-          type="button"
-          aria-label="Назад"
-          onClick={() => navigate(-1)}
-          className="mt-10 flex h-10 w-10 items-center justify-center rounded-full bg-black text-primary"
-        >
+        <button type="button" onClick={() => navigate(-1)} className="mt-10 flex h-10 w-10 items-center justify-center rounded-full bg-black text-primary">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M15 18l-6-6 6-6" />
           </svg>
         </button>
 
-        {/* Декоративный градиентный блик */}
-        <div
-          aria-hidden
-          className="pointer-events-none mx-auto mt-4 h-[170px] w-[260px] rotate-[-20deg]"
-          style={{
-            background:
-              'radial-gradient(ellipse closest-side at center, #FF6600 0%, #FFCC00 36%, #FF0055 75%, rgba(255, 0, 85, 0) 100%)',
-          }}
-        />
+        <div aria-hidden className="pointer-events-none mx-auto mt-4 h-[170px] w-[260px] rotate-[-20deg]" style={{ background: 'radial-gradient(ellipse closest-side at center, #FF6600 0%, #FFCC00 36%, #FF0055 75%, rgba(255, 0, 85, 0) 100%)' }} />
 
-        {/* Заголовок */}
         <h1 className="mt-8 text-4xl leading-[105%] font-semibold text-black laptop:text-[64px] desktop:text-[32px]">
           Подтверждение входа
         </h1>
@@ -154,7 +127,6 @@ const CodeInput = () => {
           Код отправлен на {email}
         </p>
 
-        {/* Плашка с ошибкой */}
         {error && (
           <div className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-700 text-center">
             {error}
@@ -162,7 +134,6 @@ const CodeInput = () => {
         )}
 
         <form onSubmit={handleConfirm} noValidate>
-          {/* Сегменты ввода кода */}
           <div className="mt-12 flex items-center justify-center gap-1.5">
             {code.map((digit, index) => (
               <input
@@ -176,42 +147,21 @@ const CodeInput = () => {
                 onChange={(e) => handleChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
                 disabled={loading}
-                aria-label={`Цифра кода ${index + 1}`}
-                className={`h-10 w-6 border-b-2 bg-transparent text-center text-base text-black
-                           focus:outline-none focus:border-black laptop:text-xl desktop:text-sm
-                           disabled:opacity-50
-                           ${digit ? 'border-black' : 'border-gray/50'}`}
+                className={`h-10 w-6 border-b-2 bg-transparent text-center text-base text-black focus:outline-none focus:border-black laptop:text-xl desktop:text-sm disabled:opacity-50 ${digit ? 'border-black' : 'border-gray/50'}`}
               />
             ))}
           </div>
 
-          {/* Кнопка подтверждения */}
-          <button
-            type="submit"
-            disabled={!isCodeComplete || loading}
-            className={`mt-4 h-12 w-full rounded-full text-sm transition-colors
-              ${isCodeComplete && !loading
-                ? 'bg-accent text-black'
-                : 'cursor-not-allowed bg-gray/50 text-primary'}`}
-          >
+          <button type="submit" disabled={!isCodeComplete || loading} className={`mt-4 h-12 w-full rounded-full text-sm transition-colors ${isCodeComplete && !loading ? 'bg-accent text-black' : 'cursor-not-allowed bg-gray/50 text-primary'}`}>
             {loading ? 'Проверка...' : 'Подтвердить'}
           </button>
         </form>
 
-        {/* Таймер повторной отправки */}
         <p className="mt-6 text-center text-sm leading-[120%] text-gray">
-          Отправить повторно через:{' '}
-          <span className="font-medium text-black">{mm}:{ss}</span>
+          Отправить повторно через: <span className="font-medium text-black">{mm}:{ss}</span>
         </p>
 
-        {/* Повторный запрос кода */}
-        <button
-          type="button"
-          onClick={handleResend}
-          disabled={!canResend || loading}
-          className={`mt-2 mx-auto text-sm leading-[120%] transition-colors
-            ${canResend && !loading ? 'text-black hover:underline' : 'cursor-not-allowed text-gray'}`}
-        >
+        <button type="button" onClick={handleResend} disabled={!canResend || loading} className={`mt-2 mx-auto text-sm leading-[120%] transition-colors ${canResend && !loading ? 'text-black hover:underline' : 'cursor-not-allowed text-gray'}`}>
           Запросить код повторно
         </button>
       </div>

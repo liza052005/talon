@@ -1,51 +1,21 @@
-from django.shortcuts import render
-from .totp import provisioning_uri
-# Create your views here.
+from django.contrib.auth import get_user_model
 from rest_framework import status
-from rest_framework.permissions import AllowAny
-from rest_framework.response import Response
-from rest_framework.views import APIView
-from .security import account_is_blocked, check_ip_rate_limit, client_ip
-from rest_framework.exceptions import Throttled
-from .serializers import (
-    LoginSerializer, StaffLoginSerializer, StaffTOTPSetupSerializer,
-    StaffTOTPVerifySerializer, StudentRegisterSerializer, Verify2FASerializer,
-)
-
-from .serializers import StudentRegisterSerializer
-
-
-class StudentRegisterView(APIView):
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        serializer = StudentRegisterSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
-        profile = serializer.save()
-
-        return Response(
-            {
-                'detail': 'Регистрация успешна.',
-                'student': {
-                    'full_name': profile.full_name,
-                    'group': profile.group.name,
-                    'email': profile.user.email,
-                },
-            },
-            status=status.HTTP_201_CREATED,
-        )
-from rest_framework import status
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from core.models import LoginAttempt
 from .serializers import (
-    LoginSerializer, StudentRegisterSerializer, Verify2FASerializer,
+    LoginSerializer,
+    StaffLoginSerializer,
+    StaffTOTPSetupSerializer,
+    StaffTOTPVerifySerializer,
+    StudentRegisterSerializer,
+    Verify2FASerializer,
 )
+
+User = get_user_model()
 
 
 def _client_ip(request):
@@ -63,11 +33,59 @@ def _log_login(request, email, success):
         success=success,
     )
 
+
+def _issue_jwt(user):
+    """Вспомогательная функция для генерации токенов."""
+    refresh = RefreshToken.for_user(user)
+    return {
+        'access': str(refresh.access_token),
+        'refresh': str(refresh),
+        'user': {
+            'id': user.id,
+            'email': user.email,
+            'role': user.role,
+        },
+    }
+
+
+class StudentRegisterView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        serializer = StudentRegisterSerializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        profile = serializer.save()
+
+        # Генерируем токены СРАЗУ после регистрации
+        refresh = RefreshToken.for_user(profile.user)
+
+        return Response(
+            {
+                'detail': 'Регистрация успешна.',
+                'access': str(refresh.access_token),
+                'refresh': str(refresh),
+                'user': {
+                    'id': profile.user.id,
+                    'email': profile.user.email,
+                    'role': profile.user.role,
+                },
+                'student': {
+                    'full_name': profile.full_name,
+                    'group': profile.group.name,
+                    'email': profile.user.email,
+                },
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
 class LoginView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        # 1) Rate limit по IP
+        from .security import check_ip_rate_limit, account_is_blocked
         check_ip_rate_limit(request)
 
         serializer = LoginSerializer(data=request.data, context={'request': request})
@@ -78,14 +96,10 @@ class LoginView(APIView):
 
         user = serializer.save()
 
-        # 2) Блокировка аккаунта (до успешного ответа — но после проверки пароля,
-        #    чтобы не палить существование email)
         if account_is_blocked(user.email):
             _log_login(request, user.email, success=False)
-            raise Throttled(
-                detail='Аккаунт временно заблокирован. Попробуйте позже.',
-                wait=30 * 60,
-            )
+            from rest_framework.exceptions import Throttled
+            raise Throttled(detail='Аккаунт временно заблокирован. Попробуйте позже.', wait=30 * 60)
 
         _log_login(request, user.email, success=True)
         return Response(
@@ -93,10 +107,12 @@ class LoginView(APIView):
             status=status.HTTP_200_OK,
         )
 
+
 class Verify2FAView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
+        from .security import check_ip_rate_limit
         check_ip_rate_limit(request)
 
         serializer = Verify2FASerializer(data=request.data)
@@ -108,42 +124,15 @@ class Verify2FAView(APIView):
         user = serializer.save()
         _log_login(request, user.email, success=True)
 
-        refresh = RefreshToken.for_user(user)
-        return Response(
-            {
-                'access': str(refresh.access_token),
-                'refresh': str(refresh),
-                'user': {
-                    'id': user.id,
-                    'email': user.email,
-                    'role': user.role,
-                },
-            },
-            status=status.HTTP_200_OK,
-        )
-from rest_framework.permissions import IsAuthenticated
-
-
-class MeView(APIView):
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        u = request.user
-        return Response({'id': u.id, 'email': u.email, 'role': u.role})
-
-def _issue_jwt(user):
-    refresh = RefreshToken.for_user(user)
-    return {
-        'access': str(refresh.access_token),
-        'refresh': str(refresh),
-        'user': {'id': user.id, 'email': user.email, 'role': user.role},
-    }
+        return Response(_issue_jwt(user), status=status.HTTP_200_OK)
 
 
 class StaffLoginView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
+        from .security import check_ip_rate_limit, account_is_blocked
+        from .totp import provisioning_uri
         check_ip_rate_limit(request)
 
         serializer = StaffLoginSerializer(data=request.data, context={'request': request})
@@ -156,6 +145,7 @@ class StaffLoginView(APIView):
 
         if account_is_blocked(user.email):
             _log_login(request, user.email, success=False)
+            from rest_framework.exceptions import Throttled
             raise Throttled(detail='Аккаунт временно заблокирован. Попробуйте позже.', wait=30 * 60)
 
         _log_login(request, user.email, success=True)
@@ -168,16 +158,14 @@ class StaffLoginView(APIView):
                 'otpauth_uri': provisioning_uri(user.totp_secret, user.email),
             })
 
-        return Response({
-            'detail': 'Введите TOTP-код.',
-            'mode': 'verify',
-        })
+        return Response({'detail': 'Введите TOTP-код.', 'mode': 'verify'})
 
 
 class StaffTOTPSetupView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
+        from .security import check_ip_rate_limit
         check_ip_rate_limit(request)
 
         serializer = StaffTOTPSetupSerializer(data=request.data)
@@ -199,6 +187,7 @@ class StaffTOTPVerifyView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
+        from .security import check_ip_rate_limit
         check_ip_rate_limit(request)
 
         serializer = StaffTOTPVerifySerializer(data=request.data)
@@ -211,3 +200,11 @@ class StaffTOTPVerifyView(APIView):
         _log_login(request, user.email, success=True)
 
         return Response(_issue_jwt(user), status=status.HTTP_200_OK)
+
+
+class MeView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        u = request.user
+        return Response({'id': u.id, 'email': u.email, 'role': u.role})

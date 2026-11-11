@@ -1,19 +1,25 @@
-import React, { useState } from 'react';
+
 import { useNavigate } from 'react-router-dom';
+import React from 'react';
+import { useState, useContext } from 'react';
+import { RegisterContext } from '../store/RegisterContext';
 
 const RegisterStep1 = () => {
   const navigate = useNavigate();
+  const { updateData } = useContext(RegisterContext);
+  
   const [fullName, setFullName] = useState('');
   const [group, setGroup] = useState('');
   const [isBudget, setIsBudget] = useState(false);
 
-  // Кнопка активна: ФИО + группа + галочка бюджета
   const isFormValid = fullName.trim() !== '' && group.trim() !== '' && isBudget;
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!isFormValid) return;
-    // TODO: сохранить данные шага (state store / backend)
+    
+    // Сохраняем данные первого шага в контекст
+    updateData({ fullName, group, isBudget });
     navigate('/register/step-2');
   };
 

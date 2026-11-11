@@ -8,12 +8,15 @@ const ForgotPassword = () => {
   // Кнопка активна только когда заполнен email
   const isEmailValid = email.trim() !== '';
 
-  const handleReset = (e) => {
-    e.preventDefault();
-    if (!isEmailValid) return;
-    // TODO: запрос к backend за ссылкой/кодом сброса пароля
-    // TODO: редирект на экран успешной отправки (если будет в макетах)
-  };
+ // В файле ForgotPassword.jsx
+const handleReset = (e) => {
+  e.preventDefault();
+  if (!isEmailValid) return;
+  
+  // Т.к. на бэкенде эндпоинта нет, просто показываем alert
+  alert('Если такой email существует, инструкция по сбросу отправлена.');
+  navigate('/');
+};
 
   return (
     <div className="min-h-screen w-full bg-secondary flex flex-col px-5">
