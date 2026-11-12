@@ -2,7 +2,7 @@ from django.urls import path
 
 from .views import (
     MealConfirmView, QRSessionCreateView, QRScanView, TodayStatsView,
-    StudentStatusView, StudentUploadView, ReportSummaryView, ReportExportView,
+    StudentStatusView, StudentUploadView, ReportSummaryView, ReportExportView,QRStatsMonthView,
 )
 
 
@@ -15,4 +15,5 @@ urlpatterns = [
     path('students/upload/', StudentUploadView.as_view(), name='students-upload'),
   path('reports/summary/', ReportSummaryView.as_view(), name='report-summary'),
     path('reports/export/', ReportExportView.as_view(), name='report-export'),
+    path('qr/stats/month/', QRStatsMonthView.as_view(), name='qr-stats-month'),
 ]

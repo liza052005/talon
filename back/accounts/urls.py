@@ -2,7 +2,7 @@ from django.urls import path
 
 from .views import (
     LoginView, MeView, StaffLoginView, StaffTOTPSetupView,
-    StaffTOTPVerifyView, StudentRegisterView, Verify2FAView, StaffListCreateView,
+    StaffTOTPVerifyView, StudentRegisterView, Verify2FAView, StaffListCreateView, StaffDetailView
 )
 
 urlpatterns = [
@@ -16,6 +16,7 @@ urlpatterns = [
     path('staff/totp-setup/', StaffTOTPSetupView.as_view(), name='staff-totp-setup'),
     path('staff/verify-totp/', StaffTOTPVerifyView.as_view(), name='staff-verify-totp'),
     path('staff/', StaffListCreateView.as_view(), name='staff-list'),
+    path('staff/<int:pk>/', StaffDetailView.as_view(), name='staff-detail'),
 
     # общее
     path('me/', MeView.as_view(), name='me'),

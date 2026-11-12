@@ -24,14 +24,15 @@ const StaffLogin = () => {
       const res = await api.post('/auth/staff/login/', { email, password });
       
       if (res.data.mode === 'setup') {
-        // Если это первый вход и TOTP не привязан, 
-        // временно показываем секрет (потом сделаем красивый экран привязки)
-        alert(`ПЕРВЫЙ ВХОД!\nДобавьте этот секрет в Google Authenticator:\n\n${res.data.secret}\n\nСсылка: ${res.data.otpauth_uri}`);
-        // После того как добавили в приложение, переходим на ввод кода
-        navigate('/staff/code', { state: { email } });
+        // Первый вход: TOTP еще не привязан. 
+        // ВРЕМЕННО показываем alert с секретом (потом сделаем красивый экран).
+        alert(`ПЕРВЫЙ ВХОД!\nДобавьте этот секрет в Google Authenticator:\n\n${res.data.secret}`);
+        
+        // Переходим на ввод кода, передавая режим setup
+        navigate('/staff/code', { state: { email, mode: 'setup' } });
       } else {
         // Обычный вход (mode === 'verify')
-        navigate('/staff/code', { state: { email } });
+        navigate('/staff/code', { state: { email, mode: 'verify' } });
       }
     } catch (err) {
       if (err.response?.data?.detail) {

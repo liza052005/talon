@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
+
 from core.models import LoginAttempt
 from .serializers import (
     LoginSerializer,
@@ -35,7 +36,6 @@ def _log_login(request, email, success):
 
 
 def _issue_jwt(user):
-    """Вспомогательная функция для генерации токенов."""
     refresh = RefreshToken.for_user(user)
     return {
         'access': str(refresh.access_token),
@@ -58,9 +58,7 @@ class StudentRegisterView(APIView):
 
         profile = serializer.save()
 
-        # Генерируем токены СРАЗУ после регистрации
         refresh = RefreshToken.for_user(profile.user)
-
         return Response(
             {
                 'detail': 'Регистрация успешна.',
@@ -174,7 +172,7 @@ class StaffTOTPSetupView(APIView):
             _log_login(request, email, success=False)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        user = serializer.save()
+        user = serializer.save() # Теперь возвращает объект user
         _log_login(request, user.email, success=True)
 
         return Response({
@@ -196,7 +194,7 @@ class StaffTOTPVerifyView(APIView):
             _log_login(request, email, success=False)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        user = serializer.save()
+        user = serializer.save() # Теперь возвращает объект user
         _log_login(request, user.email, success=True)
 
         return Response(_issue_jwt(user), status=status.HTTP_200_OK)
@@ -209,13 +207,13 @@ class MeView(APIView):
         u = request.user
         return Response({'id': u.id, 'email': u.email, 'role': u.role})
 
-from core.models import User
+
+# --- АДМИНКА ---
 
 class StaffListCreateView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # Разрешаем и админу, и модератору смотреть список
         if request.user.role not in [User.Role.ADMIN, User.Role.MODERATOR]:
             return Response({'detail': 'Доступ запрещён'}, status=status.HTTP_403_FORBIDDEN)
         
@@ -223,21 +221,71 @@ class StaffListCreateView(APIView):
         return Response(staff)
 
     def post(self, request):
-        # А вот создавать новых сотрудников может ТОЛЬКО админ
-        if request.user.role != User.Role.ADMIN:
-            return Response({'detail': 'Только администратор может создавать сотрудников'}, status=status.HTTP_403_FORBIDDEN)
+        if request.user.role not in [User.Role.ADMIN, User.Role.MODERATOR]:
+            return Response({'detail': 'Доступ запрещён'}, status=status.HTTP_403_FORBIDDEN)
         
         data = request.data
         if User.objects.filter(email=data['email']).exists():
             return Response({'detail': 'Этот email уже занят'}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Создаем сотрудника (пароль по умолчанию qwerty123)
+        full_name = data.get('lastName', '')
+        parts = full_name.split(' ')
+        first_name = parts[1] if len(parts) > 1 else ''
+        last_name = parts[0] if parts else ''
+
+        password = data.get('password', 'qwerty123')
+
         user = User.objects.create_user(
             username=data['email'],
             email=data['email'],
-            password=data.get('password', 'qwerty123'),
-            first_name=data.get('firstName', ''),
-            last_name=data.get('lastName', ''),
+            password=password,
+            first_name=first_name,
+            last_name=last_name,
             role=data['role']
         )
         return Response({'id': user.id, 'email': user.email}, status=status.HTTP_201_CREATED)
+
+
+class StaffDetailView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, pk):
+        if request.user.role not in [User.Role.ADMIN, User.Role.MODERATOR]:
+            return Response({'detail': 'Доступ запрещён'}, status=status.HTTP_403_FORBIDDEN)
+        
+        try:
+            user = User.objects.get(pk=pk)
+        except User.DoesNotExist:
+            return Response({'detail': 'Сотрудник не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+        data = request.data
+        if 'email' in data and data['email'] != user.email:
+            if User.objects.filter(email=data['email']).exists():
+                return Response({'detail': 'Этот email уже занят'}, status=status.HTTP_400_BAD_REQUEST)
+            user.email = data['email']
+            user.username = data['email']
+
+        if 'lastName' in data:
+            parts = data['lastName'].split(' ')
+            user.last_name = parts[0] if parts else ''
+            user.first_name = parts[1] if len(parts) > 1 else ''
+
+        if 'role' in data:
+            user.role = data['role']
+            
+        if data.get('password'):
+            user.set_password(data['password'])
+
+        user.save()
+        return Response({'detail': 'Обновлено'})
+
+    def delete(self, request, pk):
+        if request.user.role not in [User.Role.ADMIN, User.Role.MODERATOR]:
+            return Response({'detail': 'Доступ запрещён'}, status=status.HTTP_403_FORBIDDEN)
+        
+        try:
+            user = User.objects.get(pk=pk)
+            user.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        except User.DoesNotExist:
+            return Response({'detail': 'Сотрудник не найден'}, status=status.HTTP_404_NOT_FOUND)

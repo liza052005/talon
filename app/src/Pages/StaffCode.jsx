@@ -11,6 +11,7 @@ const StaffCode = () => {
   const { login } = useContext(AuthContext);
   
   const email = location.state?.email;
+  const mode = location.state?.mode; // Получаем режим (setup или verify)
 
   const [code, setCode] = useState('');
   const [error, setError] = useState('');
@@ -31,12 +32,20 @@ const StaffCode = () => {
     setLoading(true);
 
     try {
-      const res = await api.post('/auth/staff/verify-totp/', { email, code });
+      const endpoint = mode === 'setup' 
+        ? '/auth/staff/totp-setup/' 
+        : '/auth/staff/verify-totp/';
+
+      const res = await api.post(endpoint, { email, code });
       
-      // Сохраняем токены
+      // 1. Принудительно сохраняем в localStorage (на всякий случай)
+      localStorage.setItem('access_token', res.data.access);
+      localStorage.setItem('refresh_token', res.data.refresh);
+      
+      // 2. Вызываем login из контекста
       login(res.data);
       
-      // Переходим на рабочий экран планшета
+      // 3. Переходим на экран планшета
       navigate('/staff/qr');
     } catch (err) {
       if (err.response?.data?.detail) {
@@ -59,7 +68,9 @@ const StaffCode = () => {
 
         <h1 className="mt-12 text-center text-4xl leading-[105%] font-semibold text-black laptop:text-[64px] desktop:text-[32px]">Введите код</h1>
         <p className="mt-2 text-center text-sm leading-[120%] text-gray laptop:text-xl laptop:font-normal desktop:text-sm desktop:font-medium">
-          На ваш Google Authenticator был выслан код для входа в аккаунт
+          {mode === 'setup' 
+            ? 'Введите код из Google Authenticator, чтобы завершить настройку'
+            : 'Введите код из Google Authenticator для входа в аккаунт'}
         </p>
 
         {error && (

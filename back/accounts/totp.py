@@ -18,8 +18,22 @@ def provisioning_uri(secret: str, email: str) -> str:
     )
 
 
-def verify_code(secret: str, code: str, valid_window: int = 1) -> bool:
-    """valid_window=1 допускает ±30 секунд (часы на телефоне могут отставать)."""
+import pyotp
+import time
+import pyotp
+import time
+
+def verify_code(secret: str, code: str, valid_window: int = 5) -> bool:
     if not secret or not code:
         return False
-    return pyotp.TOTP(secret).verify(code, valid_window=valid_window)
+    
+    # Очищаем секрет от возможных пробелов
+    clean_secret = str(secret).strip()
+    
+    totp = pyotp.TOTP(clean_secret)
+    
+    # Явно передаем текущее время в секундах (UNIX time)
+    current_time = int(time.time())
+    
+    # Проверяем код с большим окном погрешности (5 * 30 = 150 секунд)
+    return totp.verify(str(code).strip(), for_time=current_time, valid_window=valid_window)

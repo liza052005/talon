@@ -258,3 +258,42 @@ class ReportExportView(APIView):
         response['Content-Disposition'] = 'attachment; filename="report.xlsx"'
         wb.save(response)
         return response
+
+from django.db.models.functions import TruncDate
+from django.db.models import Count
+from datetime import date
+import calendar
+
+class QRStatsMonthView(APIView):
+    permission_classes = [IsAuthenticated, IsStaffForQR]
+
+    def get(self, request):
+        # Получаем запрашиваемый месяц и год из GET-параметров (по умолчанию текущий)
+        today = timezone.localdate()
+        year = int(request.query_params.get('year', today.year))
+        month = int(request.query_params.get('month', today.month))
+
+        # Определяем первый и последний день месяца
+        _, last_day = calendar.monthrange(year, month)
+        start_date = date(year, month, 1)
+        end_date = date(year, month, last_day)
+
+        # Считаем выдачи в этом месяце, группируя по дням
+        logs = (
+            MealLog.objects
+            .filter(issued_at__date__gte=start_date, issued_at__date__lte=end_date)
+            .annotate(day=TruncDate('issued_at'))
+            .values('day')
+            .annotate(count=Count('id'))
+            .order_by('day')
+        )
+
+        # Формируем словарь: { '2026-11-01': 10, '2026-11-02': 15 ... }
+        stats = {str(item['day']): item['count'] for item in logs}
+
+        return Response({
+            'year': year,
+            'month': month,
+            'stats': stats,
+            'total_in_month': sum(stats.values())
+        })
