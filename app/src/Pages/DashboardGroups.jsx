@@ -34,22 +34,6 @@ const TextInput = (props) => (
   />
 );
 
-/* Поле с шевроном (выглядит как select из макета), но с возможностью ввода:
-   подсказки берутся из уже существующих значений */
-const SelectLikeInput = ({ listId, options, ...props }) => (
-  <div className="relative">
-    <input
-      {...props}
-      list={listId}
-      className="h-11 w-full appearance-none rounded-lg border border-gray/40 bg-transparent pl-4 pr-10 text-sm text-black placeholder-gray focus:border-black focus:outline-none"
-    />
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray"><path d="M6 9l6 6 6-6" /></svg>
-    <datalist id={listId}>
-      {options.map((option) => <option key={option} value={option} />)}
-    </datalist>
-  </div>
-);
-
 const StatusBadge = ({ status }) => {
   const current = STATUS[status];
   if (!current) return null;
@@ -65,7 +49,7 @@ const StatusBadge = ({ status }) => {
 
 /* ---------- Модалка добавления / редактирования группы ---------- */
 
-const GroupFormModal = ({ mode, initial, specialtyOptions, curatorOptions, onClose, onSubmit }) => {
+const GroupFormModal = ({ mode, initial, onClose, onSubmit }) => {
   const isAdd = mode === 'add';
 
   const [number, setNumber] = useState(initial?.number ?? '');
@@ -108,13 +92,11 @@ const GroupFormModal = ({ mode, initial, specialtyOptions, curatorOptions, onClo
           <TextInput placeholder="10-116" value={number} onChange={(e) => setNumber(e.target.value)} />
         </div>
 
-        {/* Специальность есть только в модалке добавления (как в макете) */}
+        {/* Специальность: свободный ввод, placeholder как пример (только при добавлении) */}
         {isAdd && (
           <div>
             <FieldLabel>Специальность</FieldLabel>
-            <SelectLikeInput
-              listId="specialty-options"
-              options={specialtyOptions}
+            <TextInput
               placeholder="Мехатроника и робототехника"
               value={specialty}
               onChange={(e) => setSpecialty(e.target.value)}
@@ -156,8 +138,8 @@ const GroupFormModal = ({ mode, initial, specialtyOptions, curatorOptions, onClo
                   className={`rounded-full border px-4 py-2 text-sm leading-[120%] transition-colors ${isSelected ? 'font-medium' : ''}`}
                   style={{
                     borderColor: current.stroke,
-                    color: current.stroke,
-                    backgroundColor: isSelected ? current.fill : 'transparent',
+                    color: isSelected ? '#FFFFFF' : current.stroke,
+                    backgroundColor: isSelected ? current.stroke : 'transparent',
                   }}
                 >
                   {current.label}
@@ -167,15 +149,10 @@ const GroupFormModal = ({ mode, initial, specialtyOptions, curatorOptions, onClo
           </div>
         </div>
 
+        {/* Куратор: ручное текстовое поле */}
         <div>
           <FieldLabel>Куратор</FieldLabel>
-          <SelectLikeInput
-            listId="curator-options"
-            options={curatorOptions}
-            placeholder="Иванов Иван Иванович"
-            value={curator}
-            onChange={(e) => setCurator(e.target.value)}
-          />
+          <TextInput placeholder="Иванов Иван Иванович" value={curator} onChange={(e) => setCurator(e.target.value)} />
         </div>
 
         <div className="mt-1 grid grid-cols-2 gap-3">
@@ -277,10 +254,8 @@ const DashboardGroups = () => {
     setTimeout(() => setToast(null), 3000);
   };
 
-  /* Опции фильтров и подсказок появляются только при наличии данных */
+  /* Опции фильтров появляются только при наличии данных */
   const numberOptions = useMemo(() => [...new Set(groups.map((g) => g.number))], [groups]);
-  const specialtyOptions = useMemo(() => [...new Set(groups.map((g) => g.specialty))], [groups]);
-  const curatorOptions = useMemo(() => [...new Set(groups.map((g) => g.curator))], [groups]);
   const categoryOptions = useMemo(() => [...new Set(groups.flatMap((g) => g.categories ?? []))], [groups]);
   const activityOptions = useMemo(() => [...new Set(groups.map((g) => STATUS[g.status]?.label))].filter(Boolean), [groups]);
 
@@ -491,8 +466,6 @@ const DashboardGroups = () => {
       {modal === 'add' && (
         <GroupFormModal
           mode="add"
-          specialtyOptions={specialtyOptions}
-          curatorOptions={curatorOptions}
           onClose={() => setModal(null)}
           onSubmit={handleAdd}
         />
@@ -502,8 +475,6 @@ const DashboardGroups = () => {
         <GroupFormModal
           mode="edit"
           initial={modal.group}
-          specialtyOptions={specialtyOptions}
-          curatorOptions={curatorOptions}
           onClose={() => setModal(null)}
           onSubmit={(data) => handleEdit(modal.group.id, data)}
         />

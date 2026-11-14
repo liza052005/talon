@@ -23,6 +23,8 @@ import StaffQr from './Pages/StaffQr';
 import AdminStaff from './Pages/AdminStaff';
 import DashboardStudent from './Pages/DashboardStudent';
 import DashboardGroups from './Pages/DashboardGroups';
+import DashboardCategories from './Pages/DashboardCategories';
+import DashboardReports from './Pages/DashboardReports';
 
 
 const ProtectedRoute = ({ children }) => {
@@ -91,6 +93,9 @@ function AppRoutes() {
 
       <Route path="/admin/students" element={<DashboardStudent />} />
       <Route path="/admin/groups" element={<DashboardGroups />} />
+      <Route path="/admin/categories" element={<DashboardCategories />} />
+      <Route path="/admin/reports" element={<DashboardReports />} />
+
     </Routes>
   );
 }

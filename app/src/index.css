@@ -49,3 +49,10 @@ body {
   color: #979797;
   animation: loader-wave 1.6s ease-in-out infinite;
 }
+
+/* Скроллбар модалок в палитре Талона */
+.talon-scroll::-webkit-scrollbar { width: 8px; }
+.talon-scroll::-webkit-scrollbar-track { background: #F2F2F7; border-radius: 8px; }
+.talon-scroll::-webkit-scrollbar-thumb { background: #979797; border-radius: 8px; }
+.talon-scroll::-webkit-scrollbar-thumb:hover { background: #0D0C0C; }
+.talon-scroll { scrollbar-width: thin; scrollbar-color: #979797 #F2F2F7; }

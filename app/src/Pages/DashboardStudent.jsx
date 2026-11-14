@@ -106,7 +106,7 @@ const StudentFormModal = ({ title, submitLabel, initial, groupOptions, onClose, 
 
         <div>
           <FieldLabel>Категории</FieldLabel>
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap gap-3">
             {CATEGORIES.map((category) => {
               const isSelected = categories.includes(category.id);
               return (
@@ -114,11 +114,11 @@ const StudentFormModal = ({ title, submitLabel, initial, groupOptions, onClose, 
                   key={category.id}
                   type="button"
                   onClick={() => toggleCategory(category.id)}
-                  className={`rounded-full text-sm leading-[120%] transition-colors ${isSelected ? 'border px-3 py-1' : 'px-0 py-1'}`}
+                  className="rounded-full border px-4 py-2 text-sm leading-[120%] transition-colors"
                   style={{
-                    color: category.stroke,
-                    borderColor: isSelected ? category.stroke : 'transparent',
-                    backgroundColor: isSelected ? category.fill : 'transparent',
+                    borderColor: category.stroke,
+                    color: isSelected ? '#FFFFFF' : category.stroke,
+                    backgroundColor: isSelected ? category.stroke : 'transparent',
                   }}
                 >
                   {category.label}
