@@ -76,7 +76,7 @@ const AdminSidebar = ({ active, onLogout, logoutLabel = 'Выйти из акк�
         aria-label="Талон — на главную раздела"
         className="flex items-center gap-3 rounded-lg px-2 py-1 transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
       >
-        <img src={logo} alt="Талон" className="h-9 w-auto select-none" draggable={false} />
+        <img src={logo} alt="Талон" className=" select-none" draggable={false} />
       </button>
 
       {/* Навигация */}
