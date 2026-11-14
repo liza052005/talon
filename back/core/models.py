@@ -30,10 +30,15 @@ from django.db import models
 
 
 class Group(models.Model):
-    """Учебная группа. Может быть на практике — тогда питание не выдаётся."""
     name = models.CharField('название', max_length=50, unique=True)
     is_active = models.BooleanField('активна', default=True,
                                     help_text='Снять галочку = группа на практике')
+    
+    # Новые поля для админки
+    specialty = models.CharField('специальность', max_length=255, blank=True, default='')
+    curator = models.CharField('куратор', max_length=255, blank=True, default='')
+    students_count = models.PositiveIntegerField('кол-во студентов', default=0)
+
     created_at = models.DateTimeField('создана', auto_now_add=True)
 
     class Meta:

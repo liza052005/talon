@@ -289,3 +289,20 @@ class StaffDetailView(APIView):
             return Response(status=status.HTTP_204_NO_CONTENT)
         except User.DoesNotExist:
             return Response({'detail': 'Сотрудник не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+class StaffResetTOTPView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        if request.user.role not in ['admin', 'moderator']:
+            return Response({'detail': 'Доступ запрещён'}, status=status.HTTP_403_FORBIDDEN)
+        
+        try:
+            user = User.objects.get(pk=pk)
+            # Сбрасываем TOTP. При следующем входе он получит новый секрет.
+            user.totp_confirmed = False
+            user.totp_secret = ''
+            user.save()
+            return Response({'detail': 'Доступ (TOTP) сброшен'})
+        except User.DoesNotExist:
+            return Response({'detail': 'Сотрудник не найден'}, status=status.HTTP_404_NOT_FOUND)

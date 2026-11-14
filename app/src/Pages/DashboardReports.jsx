@@ -137,7 +137,7 @@ const StatCard = ({ icon, title, value, subtitle, onClick }) => (
   </button>
 );
 
-/* ---------- Модалка выбора даты (как в макете) ---------- */
+/* ---------- Модалка выбора даты ---------- */
 
 const DatePickerModal = ({ selected, onCommit, onClose }) => {
   const [viewYear, setViewYear] = useState(selected.y);
@@ -252,7 +252,12 @@ const DetailModal = ({ title, headers, rows, emptyText, onClose, onDownload }) =
 /* ---------- Страница ---------- */
 
 const DashboardReports = () => {
-  const { students, issues } = useMealStore();
+  const { students, issues, isLoading, fetchData } = useMealStore();
+
+  // Загружаем данные с бэкенда при входе
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -263,6 +268,7 @@ const DashboardReports = () => {
   const today = vladParts(now);
   const [manual, setManual] = useState(false);
   const [selected, setSelected] = useState(() => vladParts(new Date()));
+  
   useEffect(() => {
     if (!manual) setSelected(today);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -352,6 +358,18 @@ const DashboardReports = () => {
 
   const selectedWeekday = WEEKDAYS_NOM[new Date(selected.y, selected.m - 1, selected.d).getDay()];
   const heroDate = `${cap(selectedWeekday)}, ${selected.d} ${cap(MONTHS_GEN[selected.m - 1])}`;
+
+  // Если идет загрузка, показываем красивый лоадер
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex bg-primary">
+        <AdminSidebar active="reports" />
+        <div className="flex-1 flex items-center justify-center">
+          <p className="text-gray animate-pulse">Загрузка статистики...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen w-full bg-primary flex">

@@ -1,21 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
+import api from '../api/client';
 import AdminSidebar from '../components/AdminSidebar';
 
 const PAGE_SIZE = 25;
-
-/*
-  Три базовые категории питания.
-  Логика пополнения счётчиков (backend):
-  при регистрации студент выбирает минимум одну категорию,
-  после успешной регистрации count выбранной категории увеличивается.
-  Сейчас счётчики стартовуют с 0 и приходят моком; при подключении API —
-  GET /api/categories/ вернёт актуальные количества.
-*/
-const INITIAL_CATEGORIES = [
-  { id: 'dormitory', name: 'Проживание в общежитии', count: 0 },
-  { id: 'social', name: 'Принадлежность к социальной группе', count: 0 },
-  { id: 'specialty', name: 'Обучение по специальности, подлежащей кормлению', count: 0 },
-];
 
 /* ---------- Мелкие UI-кусочки ---------- */
 
@@ -36,15 +23,12 @@ const ModalShell = ({ title, onClose, children }) => (
 const FieldLabel = ({ children }) => <p className="mb-2 text-sm font-medium text-black">{children}</p>;
 
 const TextInput = (props) => (
-  <input
-    {...props}
-    className="h-11 w-full rounded-lg border border-gray/40 bg-transparent px-4 text-sm text-black placeholder-gray focus:border-black focus:outline-none"
-  />
+  <input {...props} className="h-11 w-full rounded-lg border border-gray/40 bg-transparent px-4 text-sm text-black placeholder-gray focus:border-black focus:outline-none" />
 );
 
 /* ---------- Модалка добавления / редактирования категории ---------- */
 
-const CategoryFormModal = ({ mode, initial, existingNames, onClose, onSubmit }) => {
+const CategoryFormModal = ({ mode, initial, existingNames, onClose, onSubmit, loading }) => {
   const isAdd = mode === 'add';
   const [name, setName] = useState(initial?.name ?? '');
 
@@ -60,7 +44,7 @@ const CategoryFormModal = ({ mode, initial, existingNames, onClose, onSubmit }) 
         className="mt-6 flex flex-col gap-5"
         onSubmit={(e) => {
           e.preventDefault();
-          if (!isValid) return;
+          if (!isValid && !loading) return;
           onSubmit({ name: trimmed });
         }}
       >
@@ -80,8 +64,8 @@ const CategoryFormModal = ({ mode, initial, existingNames, onClose, onSubmit }) 
           <button type="button" onClick={onClose} className="h-11 rounded-lg bg-gray/10 text-sm text-gray transition-colors hover:text-black">
             Отмена
           </button>
-          <button type="submit" disabled={!isValid} className={`h-11 rounded-lg text-sm font-medium transition-colors ${isValid ? 'bg-accent text-black' : 'cursor-not-allowed bg-gray/20 text-gray'}`}>
-            {isAdd ? 'Добавить' : 'Изменить и сохранить'}
+          <button type="submit" disabled={!isValid || loading} className={`h-11 rounded-lg text-sm font-medium transition-colors ${isValid && !loading ? 'bg-accent text-black' : 'cursor-not-allowed bg-gray/20 text-gray'}`}>
+            {loading ? 'Загрузка...' : (isAdd ? 'Добавить' : 'Изменить и сохранить')}
           </button>
         </div>
       </form>
@@ -92,13 +76,26 @@ const CategoryFormModal = ({ mode, initial, existingNames, onClose, onSubmit }) 
 /* ---------- Страница ---------- */
 
 const DashboardCategories = () => {
-  // Backend ещё не подключён: три базовые категории со счётчиками 0
-  const [categories, setCategories] = useState(INITIAL_CATEGORIES);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  const fetchCategories = async () => {
+    try {
+      const res = await api.get('/admin/categories/');
+      setCategories(res.data);
+    } catch (err) {
+      console.error('Ошибка загрузки категорий', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchCategories(); }, []);
 
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
 
-  // 'add' | { type: 'edit', category } | { type: 'delete', category } | null
   const [modal, setModal] = useState(null);
   const [toast, setToast] = useState(null);
 
@@ -119,29 +116,41 @@ const DashboardCategories = () => {
   const safePage = Math.min(page, pageCount);
   const pageItems = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
 
-  const getPageList = (current, total) => {
-    if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1);
-    if (current <= 3) return [1, 2, 3, 4, '…', total];
-    if (current >= total - 2) return [1, '…', total - 2, total - 1, total];
-    return [1, '…', current - 1, current, current + 1, '…', total];
-  };
-
   /* Действия */
-  const handleAdd = ({ name }) => {
-    setCategories((prev) => [...prev, { id: `custom-${Date.now()}`, name, count: 0 }]);
-    setModal(null);
+  const handleAdd = async ({ name }) => {
+    setActionLoading(true);
+    try {
+      await api.post('/admin/categories/', { name });
+      showToast('Категория добавлена');
+      setModal(null);
+      fetchCategories();
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Ошибка добавления');
+    } finally { setActionLoading(false); }
   };
 
-  const handleEdit = (categoryId, { name }) => {
-    setCategories((prev) => prev.map((c) => (c.id === categoryId ? { ...c, name } : c)));
-    setModal(null);
-    showToast('Изменения применены');
+  const handleEdit = async (id, { name }) => {
+    setActionLoading(true);
+    try {
+      await api.put(`/admin/categories/${id}/`, { name });
+      showToast('Изменения применены');
+      setModal(null);
+      fetchCategories();
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Ошибка редактирования');
+    } finally { setActionLoading(false); }
   };
 
-  const handleDelete = (categoryId) => {
-    setCategories((prev) => prev.filter((c) => c.id !== categoryId));
-    setModal(null);
-    showToast('Категория удалена');
+  const handleDelete = async (id) => {
+    setActionLoading(true);
+    try {
+      await api.delete(`/admin/categories/${id}/`);
+      showToast('Категория удалена');
+      setModal(null);
+      fetchCategories();
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Ошибка удаления');
+    } finally { setActionLoading(false); }
   };
 
   return (
@@ -149,13 +158,11 @@ const DashboardCategories = () => {
       <AdminSidebar active="categories" />
 
       <main className="flex-1 overflow-x-hidden px-5 py-8 laptop:px-10">
-        {/* Заголовок */}
         <h1 className="text-4xl leading-[105%] font-semibold text-black laptop:text-[40px] desktop:text-[32px]">
           Категории питания
         </h1>
         <p className="mt-1 text-sm leading-[120%] text-gray">Управление базой данных категорий питания</p>
 
-        {/* Панель действий */}
         <div className="mt-6 flex flex-wrap items-center gap-4">
           <button
             type="button"
@@ -166,7 +173,6 @@ const DashboardCategories = () => {
             Добавить категорию
           </button>
 
-          {/* Поиск по категории питания */}
           <div className="relative ml-auto w-full max-w-[320px]">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray"><circle cx="11" cy="11" r="7" /><path d="M20 20l-3.5-3.5" /></svg>
             <input
@@ -179,7 +185,6 @@ const DashboardCategories = () => {
           </div>
         </div>
 
-        {/* Таблица */}
         <div className="mt-6 overflow-x-auto">
           <table className="w-full min-w-[700px] border-separate border-spacing-0 text-left">
             <thead>
@@ -190,12 +195,12 @@ const DashboardCategories = () => {
               </tr>
             </thead>
             <tbody>
-              {pageItems.length === 0 ? (
+              {loading ? (
+                <tr><td colSpan={3} className="px-4 py-16 text-center text-sm text-gray">Загрузка...</td></tr>
+              ) : pageItems.length === 0 ? (
                 <tr>
                   <td colSpan={3} className="px-4 py-16 text-center text-sm text-gray">
-                    {categories.length === 0
-                      ? 'Список пуст — добавьте первую категорию'
-                      : 'Ничего не найдено по вашему запросу'}
+                    {categories.length === 0 ? 'Список пуст — добавьте первую категорию' : 'Ничего не найдено по вашему запросу'}
                   </td>
                 </tr>
               ) : (
@@ -208,9 +213,6 @@ const DashboardCategories = () => {
                         <button type="button" aria-label="Редактировать" className="text-gray transition-colors hover:text-black" onClick={() => setModal({ type: 'edit', category })}>
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"><path d="M4 20l4-1L20 7l-3-3L5 16l-1 4Z" /></svg>
                         </button>
-                        <button type="button" aria-label="Пересчитать студентов" className="text-black" onClick={() => { /* TODO: пересчёт количества студентов по категории (backend) */ }}>
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"><path d="M20 12a8 8 0 1 1-2.3-5.6 M20 4v4h-4" /></svg>
-                        </button>
                         <button type="button" aria-label="Удалить" className="text-[#F24444]" onClick={() => setModal({ type: 'delete', category })}>
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 7h16 M9 7V5h6v2 M6 7l1 13h10l1-13 M10 11v6 M14 11v6" /></svg>
                         </button>
@@ -222,81 +224,29 @@ const DashboardCategories = () => {
             </tbody>
           </table>
         </div>
-
-        {/* Пагинация
-        {filtered.length > 0 && (
-          <>
-            <p className="mt-4 text-sm text-black">
-              Показано {(safePage - 1) * PAGE_SIZE + 1}-{Math.min(safePage * PAGE_SIZE, filtered.length)} из {filtered.length} категорий
-            </p>
-            <div className="mt-4 flex items-center gap-2">
-              <button type="button" aria-label="Назад" disabled={safePage === 1} className="p-2 text-black disabled:opacity-30" onClick={() => setPage(safePage - 1)}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 18l-6-6 6-6" /></svg>
-              </button>
-              {getPageList(safePage, pageCount).map((item, index) =>
-                item === '…' ? (
-                  <span key={`e-${index}`} className="px-2 text-sm text-gray">…</span>
-                ) : (
-                  <button
-                    key={item}
-                    type="button"
-                    onClick={() => setPage(item)}
-                    className={`h-10 w-10 rounded-lg text-sm ${item === safePage ? 'bg-accent font-medium text-black' : 'text-black hover:bg-gray/10'}`}
-                  >
-                    {item}
-                  </button>
-                )
-              )}
-              <button type="button" aria-label="Вперед" disabled={safePage === pageCount} className="p-2 text-black disabled:opacity-30" onClick={() => setPage(safePage + 1)}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6" /></svg>
-              </button>
-            </div>
-          </>
-        )} */}
       </main>
 
-      {/* ---------- Модальные окна ---------- */}
-
+      {/* Модалки */}
       {modal === 'add' && (
-        <CategoryFormModal
-          mode="add"
-          existingNames={categories.map((c) => c.name)}
-          onClose={() => setModal(null)}
-          onSubmit={handleAdd}
-        />
+        <CategoryFormModal mode="add" existingNames={categories.map((c) => c.name)} onClose={() => setModal(null)} onSubmit={handleAdd} loading={actionLoading} />
       )}
-
       {modal?.type === 'edit' && (
-        <CategoryFormModal
-          mode="edit"
-          initial={modal.category}
-          existingNames={categories.map((c) => c.name)}
-          onClose={() => setModal(null)}
-          onSubmit={(data) => handleEdit(modal.category.id, data)}
-        />
+        <CategoryFormModal mode="edit" initial={modal.category} existingNames={categories.map((c) => c.name)} onClose={() => setModal(null)} onSubmit={(data) => handleEdit(modal.category.id, data)} loading={actionLoading} />
       )}
-
       {modal?.type === 'delete' && (
         <ModalShell title="Удалить категорию питания?" onClose={() => setModal(null)}>
           <p className="mt-4 text-sm leading-[120%] text-gray">
             Категория «{modal.category.name}» будет удалена из базы безвозвратно.
           </p>
           <div className="mt-6 grid grid-cols-2 gap-3">
-            <button type="button" onClick={() => setModal(null)} className="h-11 rounded-lg bg-gray/10 text-sm text-gray transition-colors hover:text-black">
-              Отменить
-            </button>
-            <button type="button" onClick={() => handleDelete(modal.category.id)} className="h-11 rounded-lg bg-[#F24444] text-sm font-medium text-primary">
-              Удалить
-            </button>
+            <button type="button" onClick={() => setModal(null)} className="h-11 rounded-lg bg-gray/10 text-sm text-gray transition-colors hover:text-black">Отменить</button>
+            <button type="button" disabled={actionLoading} onClick={() => handleDelete(modal.category.id)} className="h-11 rounded-lg bg-[#F24444] text-sm font-medium text-primary">{actionLoading ? '...' : 'Удалить'}</button>
           </div>
         </ModalShell>
       )}
 
-      {/* Тост внизу по центру */}
       {toast && (
-        <div className="fixed bottom-6 left-1/2 z-[60] -translate-x-1/2 rounded-full bg-black px-6 py-3 text-sm text-primary shadow-lg">
-          {toast}
-        </div>
+        <div className="fixed bottom-6 left-1/2 z-[60] -translate-x-1/2 rounded-full bg-black px-6 py-3 text-sm text-primary shadow-lg">{toast}</div>
       )}
     </div>
   );

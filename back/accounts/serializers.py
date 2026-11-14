@@ -44,21 +44,41 @@ class StudentRegisterSerializer(serializers.Serializer):
         if categories.count() != len(attrs['category_ids']):
             raise serializers.ValidationError('К сожалению, вам питание не доступно.')
 
+        # Ищем заготовку
         candidates = StudentCandidate.objects.filter(
             full_name__iexact=attrs['full_name'].strip(),
             group=group,
             is_budget=attrs['is_budget'],
             is_registered=False,
-            categories__in=categories,
         ).distinct()
 
-        if not candidates.exists():
-            raise serializers.ValidationError('К сожалению, вам питание не доступно.')
+        valid_candidate = None
+        for c in candidates:
+            # Проверяем, есть ли пересечение по категориям
+            candidate_cat_ids = set(c.categories.values_list('id', flat=True))
+            input_cat_ids = set(attrs['category_ids'])
+            if candidate_cat_ids & input_cat_ids:
+                valid_candidate = c
+                break
 
-        attrs['_candidate'] = candidates.first()
+        if not valid_candidate:
+            # Если не нашли, выводим детальную ошибку (для тебя)
+            same_name = StudentCandidate.objects.filter(full_name__iexact=attrs['full_name'].strip()).first()
+            if not same_name:
+                raise serializers.ValidationError(f"Заготовка с ФИО '{attrs['full_name']}' не найдена в базе.")
+            if same_name.is_registered:
+                raise serializers.ValidationError('Вы уже зарегистрированы.')
+            if same_name.group.name != group.name:
+                raise serializers.ValidationError(f"Группа не совпадает (в базе {same_name.group.name}).")
+            if same_name.is_budget != attrs['is_budget']:
+                raise serializers.ValidationError("Не совпадает бюджет.")
+            
+            db_cats = set(same_name.categories.values_list('id', flat=True))
+            raise serializers.ValidationError(f"Категории не совпадают. В базе: {db_cats}, вы ввели: {attrs['category_ids']}")
+
+        attrs['_candidate'] = valid_candidate
         attrs['_group'] = group
         return attrs
-
     @transaction.atomic
     def create(self, validated_data):
         candidate = validated_data['_candidate']
