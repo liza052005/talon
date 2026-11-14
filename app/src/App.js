@@ -2,7 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { useContext } from 'react';
 import { AuthProvider, AuthContext } from './store/AuthContext';
 import { RegisterProvider } from './store/RegisterContext';
-import DashboardStudent from './Pages/DashboardStudent';
+
 
 import Auth from './Pages/Auth';
 import RegisterStep1 from './Pages/RegisterStep1';
@@ -21,6 +21,8 @@ import StaffLogin from './Pages/StaffLogin';
 import StaffCode from './Pages/StaffCode';
 import StaffQr from './Pages/StaffQr';
 import AdminStaff from './Pages/AdminStaff';
+import DashboardStudent from './Pages/DashboardStudent';
+import DashboardGroups from './Pages/DashboardGroups';
 
 
 const ProtectedRoute = ({ children }) => {
@@ -88,6 +90,7 @@ function AppRoutes() {
       <Route path="*" element={<Navigate to="/" replace />} />
 
       <Route path="/admin/students" element={<DashboardStudent />} />
+      <Route path="/admin/groups" element={<DashboardGroups />} />
     </Routes>
   );
 }
