@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api/client';
 import { AuthContext } from '../store/AuthContext';
+import logo_mobile from '../assets/logo_mobile.svg';
 
 const StudentHome = () => {
   const { logout } = useContext(AuthContext);
@@ -9,6 +10,21 @@ const StudentHome = () => {
   
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     const fetchStatus = async () => {
@@ -29,7 +45,6 @@ const StudentHome = () => {
   const isIssued = status?.status_today === 'issued';
   const firstName = status?.full_name ? status.full_name.split(' ')[1] : 'Студент';
 
-  // Генерируем 6 дней для календаря (как на скриншоте)
   const days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
   const today = new Date();
   const nextDays = Array.from({ length: 6 }, (_, i) => {
@@ -47,34 +62,44 @@ const StudentHome = () => {
 
   return (
     <div className="min-h-screen w-full bg-primary flex flex-col px-6">
-      <div className="mx-auto flex w-full max-w-[400px] flex-1 flex-col pb-8">
+      <div className="mx-auto flex w-full max-w-[400px] flex-1 flex-col">
         
-        {/* Шапка с логотипом */}
-        <header className="flex justify-between items-center pt-12 pb-4">
+        <header className="relative flex justify-between items-center pt-10 pb-4" ref={menuRef}>
           <div className="flex items-center gap-1">
-             {/* Твой логотип-галочка */}
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-               <path d="M4 12L20 4V10L10 14L20 20V12" fill="#0D0C0C"/>
-            </svg>
-            <span className="font-semibold text-[17px] tracking-tight">Талон</span>
+            <img src={logo_mobile} alt="Талон" className="" />
           </div>
-          <button onClick={() => { logout(); navigate('/'); }} className="text-black font-bold text-xl pb-2">
+          
+          <button 
+            onClick={() => setIsMenuOpen(!isMenuOpen)} 
+            className="text-black font-bold text-xl pb-2 focus:outline-none"
+          >
             ...
           </button>
+
+          {isMenuOpen && (
+            <div className="absolute right-0 top-14 w-56 bg-primary rounded-xl shadow-lg border border-gray/15 z-50 overflow-hidden">
+              <button
+                onClick={() => { logout(); navigate('/'); }}
+                className="w-full flex items-center gap-3 px-4 py-3 text-left text-sm text-[#F24444] transition-colors hover:bg-[#F24444]/10"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4 M10 17l5-5-5-5 M15 12H3" />
+                </svg>
+                Выйти из аккаунта
+              </button>
+            </div>
+          )}
         </header>
 
-        {/* Блик (строго по центру, овальный) */}
-        <div className="flex justify-center mt-2 mb-6">
-          <div
-            className="h-[150px] w-[240px] rounded-full blur-[20px] opacity-90"
-            style={{
-              background: 'radial-gradient(ellipse closest-side at center, #FF6600 0%, #FFCC00 36%, #FF0055 75%, rgba(255, 0, 85, 0) 100%)',
-            }}
-          />
-        </div>
+        <div
+          aria-hidden
+          className="pointer-events-none mx-auto mt-[0px] h-[170px] w-[260px] rotate-[-20deg]"
+          style={{
+            background: 'radial-gradient(ellipse closest-side at center, #FF6600 0%, #FFCC00 36%, #FF0055 75%, rgba(255, 0, 85, 0) 100%)',
+          }}
+        />
 
-        {/* Приветствие */}
-        <h1 className="text-[34px] leading-[110%] font-semibold text-black tracking-tight">
+        <h1 className="text-[34px] mt-[60px] leading-[110%] font-semibold text-black tracking-tight">
           Привет, {firstName}
         </h1>
         <div className="mt-3">
@@ -83,18 +108,22 @@ const StudentHome = () => {
           </span>
         </div>
 
-        {/* Календарь */}
-        <div className="mt-10 flex justify-between items-center">
+        <div className="mt-6 flex justify-between items-center">
           <h2 className="text-[18px] font-semibold">{capitalizedMonth}</h2>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0D0C0C" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-            <line x1="16" y1="2" x2="16" y2="6"></line>
-            <line x1="8" y1="2" x2="8" y2="6"></line>
-            <line x1="3" y1="10" x2="21" y2="10"></line>
-          </svg>
+          <button 
+            onClick={() => setIsCalendarOpen(true)}
+            className="p-1.5 rounded-lg hover:bg-gray/10 transition-colors"
+            aria-label="Открыть историю питания"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0D0C0C" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="16" y1="2" x2="16" y2="6"></line>
+              <line x1="8" y1="2" x2="8" y2="6"></line>
+              <line x1="3" y1="10" x2="21" y2="10"></line>
+            </svg>
+          </button>
         </div>
 
-        {/* Дни (черный квадрат у сегодняшнего) */}
         <div className="mt-4 flex justify-between gap-1">
           {nextDays.map((d, i) => (
             <div key={i} className={`flex flex-col items-center justify-center w-[42px] h-[56px] rounded-lg ${d.isToday ? 'bg-black text-white' : 'text-gray'}`}>
@@ -104,46 +133,94 @@ const StudentHome = () => {
           ))}
         </div>
 
-        {/* Плашка */}
-        <div className={`mt-8 rounded-[20px] px-5 py-6 transition-colors duration-300 ${
-          isIssued ? 'bg-[#FF0000]' : 'bg-[#88FF00]'
-        }`}>
-          <h3 className="text-[22px] font-bold text-black leading-tight tracking-tight">
-            {isIssued ? 'Вы уже забрали свою еду' : 'Можно забрать еду!'}
-          </h3>
-        </div>
+        {/* Карточка получения питания */}
+        <div className="relative mt-6">
+          {/* Индикаторная плашка */}
+          <div
+            className={`h-[90px] w-full rounded-[12px] transition-colors duration-300 ${
+              isIssued ? 'bg-[#FF0009]' : 'bg-[#88FF00]'
+            }`}
+          />
 
-        {/* Описание */}
-        <p className="mt-3 text-[13px] leading-[130%] text-gray pr-4">
-          {isIssued 
-            ? 'В день вы можете получить только одну порцию еды, следующая будет доступна на следующий день'
-            : 'Спускайся быстрее в столовую, забирай свою еду и кушай на здоровье'}
-        </p>
+          {/* Основная плашка (спереди, наезжает на индикатор на 100px) */}
+          <div className="relative -mt-[50px] bg-primary rounded-[12px] px-3 h-[90px] flex items-start pt-6 z-10">
+            <h3 className="text-[24px] font-semibold text-black leading-tight tracking-tight">
+              {isIssued ? 'Вы уже забрали свою еду' : 'Можно забрать еду!'}
+            </h3>
+          </div>
 
-        {/* Кнопка Сканера */}
-        <div className="mt-auto pt-8">
-          <button
-            type="button"
-            disabled={isIssued}
-            onClick={() => navigate('/student/scan')}
-            className={`h-[56px] w-full rounded-[12px] flex items-center justify-center gap-2 text-[15px] font-medium transition-colors
-              ${isIssued 
-                ? 'bg-[#979797] text-white/70 cursor-not-allowed' 
-                : 'bg-[#0D0C0C] text-white hover:bg-black/80'}`}
-          >
-            {/* Иконка QR */}
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
-              <rect x="7" y="7" width="3" height="3"></rect>
-              <rect x="14" y="7" width="3" height="3"></rect>
-              <rect x="7" y="14" width="3" height="3"></rect>
-              <rect x="14" y="14" width="3" height="3"></rect>
-            </svg>
-            Отсканировать QR-код
-          </button>
+          {/* Описание и кнопка */}
+          <div className="mt-3">
+            <p className="text-sm leading-[130%] text-gray px-3">
+              {isIssued
+                ? 'В день вы можете получить только одну порцию еды, следующая будет доступна только на следующий день'
+                : 'Спускайся быстрее в столовую, забирай свою еду и кушай на здоровье'}
+            </p>
+
+            <button
+              type="button"
+              disabled={isIssued}
+              onClick={() => navigate('/student/scan')}
+              className={`mt-4 h-[50px] w-full rounded-[12px] flex items-center justify-center text-[15px] transition-colors
+                ${isIssued
+                  ? 'bg-[#979797] text-white/70 cursor-not-allowed'
+                  : 'bg-[#0D0C0C] text-white hover:bg-black/80'}`}
+            >
+              Отсканировать QR-код
+            </button>
+          </div>
         </div>
 
       </div>
+
+      {/* Модальное окно календаря (ТОЛЬКО ВЕРСТКА) */}
+      {isCalendarOpen && (
+        <div 
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-[#676565]/40 px-5"
+          onClick={() => setIsCalendarOpen(false)}
+        >
+          <div 
+            className="w-full max-w-[400px] bg-primary rounded-2xl p-6 shadow-2xl border border-gray/10"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-black">{capitalizedMonth}</h2>
+              <button 
+                onClick={() => setIsCalendarOpen(false)}
+                className="p-1.5 rounded-lg text-gray hover:bg-gray/10 hover:text-black transition-colors"
+              >
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
+
+            <div className="flex gap-4 mb-6 text-xs font-medium">
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-[#88FF00]"></div>
+                <span className="text-gray">Забрал питание</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3 h-3 rounded-full bg-[#FF0009]"></div>
+                <span className="text-gray">Не забрал</span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-7 gap-1.5 text-center">
+              {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map((d) => (
+                <div key={d} className="text-[11px] font-semibold text-gray py-2">
+                  {d}
+                </div>
+              ))}
+              
+              {/* Backend-специалист: здесь будет map по дням месяца */}
+              
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
