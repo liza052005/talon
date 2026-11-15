@@ -15,6 +15,7 @@ const StudentHome = () => {
   const menuRef = useRef(null);
 
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [issuedDates, setIssuedDates] = useState([]); // Массив дат "YYYY-MM-DD"
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -27,17 +28,21 @@ const StudentHome = () => {
   }, []);
 
   useEffect(() => {
-    const fetchStatus = async () => {
+    const fetchData = async () => {
       try {
-        const res = await api.get('/students/me/status/');
-        setStatus(res.data);
+        const [statusRes, historyRes] = await Promise.all([
+          api.get('/students/me/status/'),
+          api.get('/students/me/history/')
+        ]);
+        setStatus(statusRes.data);
+        setIssuedDates(historyRes.data.issued_dates);
       } catch (err) {
         console.error(err);
       } finally {
         setLoading(false);
       }
     };
-    fetchStatus();
+    fetchData();
   }, []);
 
   if (loading) return <div className="min-h-screen bg-secondary flex items-center justify-center">Загрузка...</div>;
@@ -47,6 +52,8 @@ const StudentHome = () => {
 
   const days = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
   const today = new Date();
+  
+  // Генерация ближайших 6 дней для верхней панели
   const nextDays = Array.from({ length: 6 }, (_, i) => {
     const d = new Date(today);
     d.setDate(today.getDate() + i);
@@ -59,6 +66,20 @@ const StudentHome = () => {
 
   const monthName = today.toLocaleString('ru-RU', { month: 'long', year: 'numeric' });
   const capitalizedMonth = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+
+  // --- ЛОГИКА ДЛЯ КАЛЕНДАРЯ ---
+  const currentYear = today.getFullYear();
+  const currentMonth = today.getMonth(); // 0-11
+  const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+  // Получаем день недели 1-го числа (0 - Вс, 1 - Пн...)
+  const firstDayIndex = new Date(currentYear, currentMonth, 1).getDay();
+  // Сдвиг для сетки, где Пн = 0
+  const startOffset = firstDayIndex === 0 ? 6 : firstDayIndex - 1;
+
+  // Массив пустых ячеек в начале месяца
+  const emptyCells = Array.from({ length: startOffset });
+  // Массив дней месяца
+  const monthDays = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
   return (
     <div className="min-h-screen w-full bg-primary flex flex-col px-6">
@@ -135,21 +156,18 @@ const StudentHome = () => {
 
         {/* Карточка получения питания */}
         <div className="relative mt-6">
-          {/* Индикаторная плашка */}
           <div
             className={`h-[90px] w-full rounded-[12px] transition-colors duration-300 ${
               isIssued ? 'bg-[#FF0009]' : 'bg-[#88FF00]'
             }`}
           />
 
-          {/* Основная плашка (спереди, наезжает на индикатор на 100px) */}
           <div className="relative -mt-[50px] bg-primary rounded-[12px] px-3 h-[90px] flex items-start pt-6 z-10">
             <h3 className="text-[24px] font-semibold text-black leading-tight tracking-tight">
               {isIssued ? 'Вы уже забрали свою еду' : 'Можно забрать еду!'}
             </h3>
           </div>
 
-          {/* Описание и кнопка */}
           <div className="mt-3">
             <p className="text-sm leading-[130%] text-gray px-3">
               {isIssued
@@ -173,7 +191,7 @@ const StudentHome = () => {
 
       </div>
 
-      {/* Модальное окно календаря (ТОЛЬКО ВЕРСТКА) */}
+      {/* Модальное окно календаря */}
       {isCalendarOpen && (
         <div 
           className="fixed inset-0 z-[60] flex items-center justify-center bg-[#676565]/40 px-5"
@@ -207,15 +225,55 @@ const StudentHome = () => {
               </div>
             </div>
 
+            {/* Сетка календаря */}
             <div className="grid grid-cols-7 gap-1.5 text-center">
-              {['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map((d) => (
+              {days.map((d) => (
                 <div key={d} className="text-[11px] font-semibold text-gray py-2">
                   {d}
                 </div>
               ))}
               
-              {/* Backend-специалист: здесь будет map по дням месяца */}
-              
+              {/* Пустые ячейки */}
+              {emptyCells.map((_, i) => (
+                <div key={`empty-${i}`} className="py-2"></div>
+              ))}
+
+              {/* Дни */}
+              {monthDays.map((day) => {
+                // Форматируем дату в "YYYY-MM-DD" для сравнения
+                const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                
+                // Проверяем, получал ли студент питание в этот день
+                const isIssuedDay = issuedDates.includes(dateStr);
+                
+                // Определяем, прошел ли этот день (чтобы рисовать красный)
+                const isPast = new Date(currentYear, currentMonth, day) < new Date(currentYear, currentMonth, today.getDate());
+
+                // Сегодняшний день
+                const isToday = day === today.getDate();
+
+                let bgClass = 'text-black';
+                let dotClass = '';
+
+                if (isIssuedDay) {
+                  bgClass = 'text-black font-semibold';
+                  dotClass = 'bg-[#88FF00]'; // Зеленый кружок
+                } else if (isPast) {
+                  bgClass = 'text-black font-semibold';
+                  dotClass = 'bg-[#FF0009]'; // Красный кружок
+                } else if (isToday) {
+                  bgClass = 'text-black font-bold border border-black';
+                }
+
+                return (
+                  <div key={day} className="flex flex-col items-center justify-center py-1">
+                    <div className={`flex items-center justify-center w-8 h-8 rounded-full text-[13px] ${bgClass}`}>
+                      {day}
+                    </div>
+                    {dotClass && <div className={`w-1.5 h-1.5 rounded-full mt-1 ${dotClass}`} />}
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

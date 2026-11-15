@@ -60,10 +60,19 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'config.urls'
 
+import os
+from pathlib import Path
+
+# ... (в начале файла, где BASE_DIR)
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# ... (в середине)
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [
+            BASE_DIR.parent / 'app' / 'build', # <--- ДОБАВИТЬ ЭТО (путь к папке build)
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -125,16 +134,27 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 
+STATICFILES_DIRS = [
+    BASE_DIR.parent / 'app' / 'build' / 'static', # <--- ДОБАВИТЬ ЭТО
+]
+
 
 # Email
 # https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
+# --- НАСТРОЙКА РЕАЛЬНОЙ ПОЧТЫ (Gmail) ---
 MAILERS = {
     "default": {
-        "BACKEND": "django.core.mail.backends.console.EmailBackend",
+        "BACKEND": "django.core.mail.backends.smtp.EmailBackend",
+        "HOST": "smtp.gmail.com",
+        "PORT": 587,
+        "USERNAME": "lizasmirnova@gmail.com",   # <-- ВСТАВЬ СВОЮ ПОЧТУ
+        "PASSWORD": "hhafcndiwbarxjrn", # <-- ВСТАВЬ ТОТ 16-ЗНАЧНЫЙ КОД
+        "USE_TLS": True,
     },
 }
-DEFAULT_FROM_EMAIL = "noreply@meal-system.local"
+DEFAULT_FROM_EMAIL = "lizasmirnova943@gmail.com" # Должно совпадать с USERNAME
+
 # --- CORS (React на другом порту) ---
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",   # Vite (на будущее)

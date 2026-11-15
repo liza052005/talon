@@ -696,3 +696,22 @@ class AdminMealLogsView(APIView):
                 'category': cat_name,
             })
         return Response(data)
+
+class StudentMealHistoryView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # Получаем профиль текущего студента
+        try:
+            profile = request.user.student_profile
+        except Exception:
+            return Response({'detail': 'Профиль не найден'}, status=status.HTTP_404_NOT_FOUND)
+
+        # Получаем все успешные выдачи этого студента
+        logs = MealLog.objects.filter(student=profile).order_by('issued_at')
+
+        # Возвращаем массив дат в формате YYYY-MM-DD
+        # Используем часовой пояс сервера (Москва)
+        dates = [timezone.localtime(log.issued_at).strftime('%Y-%m-%d') for log in logs]
+        
+        return Response({'issued_dates': dates})
