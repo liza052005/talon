@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import logo from '../assets/logo.svg';
 
@@ -24,12 +24,7 @@ const NAV_ITEMS = [
     id: 'students',
     label: 'Студенты',
     path: '/admin/students',
-    icon: (
-      <Icon
-        path="M5 20c1.5-3.5 4-5 7-5s5.5 1.5 7 5"
-        extra={<circle cx="12" cy="8" r="3.5" strokeWidth="2" />}
-      />
-    ),
+    icon: <Icon path="M5 20c1.5-3.5 4-5 7-5s5.5 1.5 7 5" extra={<circle cx="12" cy="8" r="3.5" strokeWidth="2" />} />,
   },
   {
     id: 'groups',
@@ -53,63 +48,66 @@ const NAV_ITEMS = [
     id: 'staff',
     label: 'Сотрудники',
     path: '/admin/staff',
-    icon: (
-      <Icon path="M12 20s-7-4.5-9-9c-1.2-2.8.6-6 3.8-6 2 0 3.6 1.2 5.2 3 1.6-1.8 3.2-3 5.2-3 3.2 0 5 3.2 3.8 6-2 4.5-9 9-9 9Z" />
-    ),
+    icon: <Icon path="M12 20s-7-4.5-9-9c-1.2-2.8.6-6 3.8-6 2 0 3.6 1.2 5.2 3 1.6-1.8 3.2-3 5.2-3 3.2 0 5 3.2 3.8 6-2 4.5-9 9-9 9Z" />,
   },
 ];
 
-const AdminSidebar = ({ active, onLogout, logoutLabel = 'Выйти из аккаунта' }) => {
+const AdminSidebar = ({ active }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
 
-  // Активный пункт: явный проп active, либо автоопределение по текущему URL
-  const currentId =
-    active ?? NAV_ITEMS.find((item) => location.pathname.startsWith(item.path))?.id;
+  const currentId = active ?? NAV_ITEMS.find((item) => location.pathname.startsWith(item.path))?.id;
+
+  // Пока только верстка: закрываем модалку и редиректим на главную (страницу входа)
+  const handleLogout = () => {
+    setIsLogoutModalOpen(false);
+    navigate('/'); 
+  };
 
   return (
-    <aside className="talon-scroll sticky top-0 hidden h-screen w-64 shrink-0 flex-col overflow-y-auto px-4 py-6 md:flex laptop:px-6">
-      {/* Логотип — клик возвращает в раздел «Студенты» */}
-      <button
-        type="button"
-        onClick={() => navigate('/admin/students')}
-        aria-label="Талон — на главную раздела"
-        className="flex items-center gap-3 rounded-lg px-2 py-1 transition-opacity hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-      >
-        <img src={logo} alt="Талон" className=" select-none" draggable={false} />
-      </button>
+    <>
+      <aside className="talon-scroll sticky top-0 hidden h-screen w-64 shrink-0 flex-col overflow-y-auto bg-primary px-4 py-6 md:flex laptop:px-6">
+        {/* Логотип */}
+        <button
+          type="button"
+          onClick={() => navigate('/admin/students')}
+          aria-label="Талон — на главную раздела"
+          className="flex items-center gap-3 rounded-lg px-2 py-1 transition-opacity hover:opacity-80 focus-visible:outline-none"
+        >
+          <img src={logo} alt="Талон" className="select-none" draggable={false} />
+        </button>
 
-      {/* Навигация */}
-      <p className="mt-8 px-3 text-xs leading-[120%] text-gray">Разделы</p>
-      <nav aria-label="Разделы администратора" className="mt-2 flex flex-col gap-1">
-        {NAV_ITEMS.map((item) => {
-          const isActive = currentId === item.id;
-          return (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => navigate(item.path)}
-              aria-current={isActive ? 'page' : undefined}
-              className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-                isActive
-                  ? 'bg-accent font-medium text-black'
-                  : 'text-gray hover:bg-gray/10 hover:text-black'
-              }`}
-            >
-              <span className={isActive ? 'text-black' : 'text-gray'}>{item.icon}</span>
-              {item.label}
-            </button>
-          );
-        })}
-      </nav>
+        {/* Навигация */}
+        <p className="mt-8 px-3 text-xs leading-[120%] text-gray">Разделы</p>
+        <nav aria-label="Разделы администратора" className="mt-2 flex flex-col gap-1">
+          {NAV_ITEMS.map((item) => {
+            const isActive = currentId === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => navigate(item.path)}
+                aria-current={isActive ? 'page' : undefined}
+                className={`flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm transition-colors focus-visible:outline-none ${
+                  isActive
+                    ? 'bg-accent font-medium text-black'
+                    : 'text-gray hover:bg-gray/10 hover:text-black'
+                }`}
+              >
+                <span className={isActive ? 'text-black' : 'text-gray'}>{item.icon}</span>
+                {item.label}
+              </button>
+            );
+          })}
+        </nav>
 
-      {/* Выход — показывается только если передан onLogout */}
-      {onLogout && (
+        {/* Кнопка выхода внизу сайдбара */}
         <div className="mt-auto border-t border-gray/15 pt-4">
           <button
             type="button"
-            onClick={onLogout}
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-[#F24444] transition-colors hover:bg-[rgba(242,68,68,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F24444]"
+            onClick={() => setIsLogoutModalOpen(true)}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-left text-sm text-[#F24444] transition-colors hover:bg-[rgba(242,68,68,0.08)] focus-visible:outline-none"
           >
             <svg
               width="20"
@@ -124,11 +122,54 @@ const AdminSidebar = ({ active, onLogout, logoutLabel = 'Выйти из акк�
             >
               <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4 M10 17l5-5-5-5 M15 12H3" />
             </svg>
-            {logoutLabel}
+            Выйти из аккаунта
           </button>
         </div>
+      </aside>
+
+      {/* Модальное окно подтверждения выхода */}
+      {isLogoutModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-[#676565]/40 px-5">
+          <div className="w-full max-w-[420px] rounded-2xl bg-primary p-6 shadow-xl">
+            <div className="flex items-start justify-between">
+              <h2 className="text-2xl leading-[105%] font-semibold text-black laptop:text-[32px]">
+                Выход из аккаунта
+              </h2>
+              <button
+                type="button"
+                onClick={() => setIsLogoutModalOpen(false)}
+                className="p-1 text-black transition-colors hover:text-gray"
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                  <path d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              </button>
+            </div>
+            
+            <p className="mt-4 text-sm leading-[120%] text-gray">
+              Вы действительно хотите выйти из аккаунта?
+            </p>
+            
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setIsLogoutModalOpen(false)}
+                className="h-11 rounded-lg bg-gray/10 text-sm text-gray transition-colors hover:text-black"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="h-11 rounded-lg bg-[#F24444] text-sm font-medium text-primary transition-colors hover:bg-[#F24444]/90"
+              >
+                Выйти из аккаунта
+              </button>
+            </div>
+          </div>
+        </div>
       )}
-    </aside>
+    </>
   );
 };
 

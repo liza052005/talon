@@ -169,7 +169,7 @@ const Auth = () => {
             onClick={() => navigate('/staff')}
             className="text-xs text-gray hover:text-black mt-4 underline decoration-dotted"
           >
-            Вход для сотрудников столовой
+            Вход для сотрудников
           </button>
         </p>
       </div>
