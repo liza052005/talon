@@ -162,6 +162,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",   # <--- ДОБАВИТЬ ЭТО (для React CRA)
     "http://127.0.0.1:3000",   # <--- И ЭТО
 ]
+ALLOWED_HOSTS = ['*']
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_CREDENTIALS = True
 
