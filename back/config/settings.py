@@ -90,10 +90,16 @@ WSGI_APPLICATION = 'config.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.1/ref/settings/#databases
 
+import os
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.postgresql',
+        'NAME': os.environ.get('DB_NAME', 'talon_db'),
+        'USER': os.environ.get('DB_USER', 'postgres'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', 'postgres'),
+        'HOST': os.environ.get('DB_HOST', 'db'), # Имя сервиса в docker-compose
+        'PORT': os.environ.get('DB_PORT', '5432'),
     }
 }
 
@@ -160,8 +166,13 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",   # Vite (на будущее)
     "http://127.0.0.1:5173",
     "http://localhost:3000",   # <--- ДОБАВИТЬ ЭТО (для React CRA)
-    "http://127.0.0.1:3000",   # <--- И ЭТО
+    "http://127.0.0.1:3000", 
+
+    "http://localhost:3000", # Для локальной разработки
+    "https://talon-frontend.netrun.app", # Для продакшена
 ]
+
+се
 ALLOWED_HOSTS = ['*']
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_CREDENTIALS = True
