@@ -1,20 +1,14 @@
-version: '3.8'
+﻿version: '3.8'
 
 services:
-  # --- BACKEND (Django) ---
   backend:
     build:
-      context: ./back # <-- Изменили путь на папку back
+      context: ./back
       dockerfile: Dockerfile
-    container_name: talon_backend
-    command: >
-      sh -c "python manage.py migrate &&
-             python manage.py collectstatic --noinput &&
-             gunicorn talon_core.wsgi:application --bind 0.0.0.0:8000"
     expose:
       - "8000"
     environment:
-      - DJANGO_SECRET_KEY=super_secret_dev_key_change_me_later
+      - DJANGO_SECRET_KEY=super_secret_dev_key
       - DEBUG=1
       - DB_NAME=talon_db
       - DB_USER=postgres
@@ -24,12 +18,9 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    restart: always
 
-  # --- DATABASE (PostgreSQL) ---
   db:
     image: postgres:15-alpine
-    container_name: talon_db
     volumes:
       - postgres_data:/var/lib/postgresql/data
     environment:
@@ -43,19 +34,15 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-    restart: always
 
-  # --- FRONTEND (React) ---
   frontend:
     build:
-      context: ./app # <-- Изменили путь на папку app
+      context: ./app
       dockerfile: Dockerfile
-    container_name: talon_frontend
     ports:
       - "80:80"
     depends_on:
       - backend
-    restart: always
 
 volumes:
   postgres_data:
